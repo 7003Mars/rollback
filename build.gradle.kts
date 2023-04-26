@@ -13,7 +13,7 @@ sourceSets {
         java.srcDir("test")
     }
 }
-group= "org.example"
+group= "me.mars"
 version= "1.0"
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
@@ -28,14 +28,15 @@ dependencies {
 }
 mindustry {
     dependency {
-        mindustry mirror "v141.2"
-        arc on "v141.3"
+        mindustry on "v143.1"
+        arc on "v143.1"
     }
-    client {
-        mindustry official "v141.3"
-    }
+//    client {
+//        mindustry from GameLocation("mindustry-antigrief", "mindustry-client-v7-builds",
+//            "1396", "desktop.jar")
+//    }
     server {
-        mindustry official "v141.3"
+        mindustry official "v143.1"
     }
     deploy {
         baseName = project.name

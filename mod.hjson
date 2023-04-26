@@ -1,12 +1,12 @@
-displayName: "rollback"
+displayName: "Rollback"
 name: "rollback"
 author: "7003Mars"
-main: "7003Mars.RollbackMod"
+main: "me.mars.rollback.RollbackPlugin"
 repo: "7003Mars/rollback"
 subtitle: ""
 description: ""
 version: "1.0"
-minGameVersion: "141"
+minGameVersion: "143"
 java: true
 hidden: false
 dependencies: []
