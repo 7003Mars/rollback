@@ -70,13 +70,8 @@ class TileStore(var width: Int, var height: Int) {
         val added: ObjectSet<Action> = ObjectSet();
         val selected: Seq<Action> = Seq();
         for (tileInfo: TileInfo in this.tiles) {
-            for (pair: ActionPair<*> in tileInfo.all) {
-                pair.getLatest().each { latest ->
-                    if (check.get(latest) && !added.contains(latest)) {
-                        selected.add(latest)
-                        added.add(latest)
-                    }
-                };
+            for (action: Action in tileInfo.actions) {
+                if (check.get(action)) selected.add(action)
             }
         }
         added.clear();
