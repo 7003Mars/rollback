@@ -92,7 +92,10 @@ class TileStore(var width: Int, var height: Int) {
             val selected: Seq<Action> = Seq();
             for (tileInfo: TileInfo in this.tiles) {
                 for (action: Action in tileInfo.actions) {
-                    if (check.get(action)) selected.add(action)
+                    if (check.get(action) && !added.contains(action)) {
+                        selected.add(action);
+                        added.add(action);
+                    }
                 }
                 tileInfo.all().each {it.willRollback = false;}
             }
@@ -109,6 +112,8 @@ class TileStore(var width: Int, var height: Int) {
                 this.lock.lock();
                 val actions: Seq<Action> = this.collectLatest { it.time > time && it.uuid == uuid }.sort { a -> a.id.toFloat()}
                 actions.each(Action::preUndo)
+                Log.info("Before removal:");
+                Log.info(actions);
                 actions.filter(Action::willRollback);
                 Log.info(actions);
                 for (i in actions.size-1 downTo  0) {
