@@ -8,13 +8,16 @@ import me.mars.rollback.RollbackPlugin.Companion.tileStore
 import me.mars.rollback.TileInfo
 import mindustry.game.Team
 
-abstract class Action(val uuid: String, val pos: Int, val team: Team) {
+// TODO: uuid should be val, not var
+abstract class Action(var uuid: String, val pos: Int, val team: Team) {
     companion object {
         var gid: Int = 0;
     }
     val id: Int = gid++;
     val time: Float = Time.time
+    var willRollback = false;
 
+    abstract fun preUndo();
 
     abstract fun undo();
 

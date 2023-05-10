@@ -25,5 +25,9 @@ class RollbackPlugin(): Plugin() {
             val ticks: Int = Strings.parseInt(it.getOrElse(1) {"1"}, 1) * Time.toMinutes.toInt() /60;
             tileStore.rollback(uuid, Time.time-ticks);
         }
+
+        handler.register("fake", "fake") {
+            tileStore.collectLatest { true }.each { it.uuid = "" }
+        }
     }
 }

@@ -3,14 +3,21 @@ package me.mars.rollback.actions
 import arc.struct.Seq
 import arc.util.Log
 import me.mars.rollback.RollbackPlugin
+import me.mars.rollback.before
 import me.mars.rollback.only
 import mindustry.Vars
 import mindustry.game.Team
 import mindustry.gen.Call
 
 class DeleteAction(uuid: String, pos: Int, team: Team) : Action(uuid, pos, team) {
+
+    override fun preUndo() {
+        // I intend to place a block, however it is useless if:
+        // My target is removed again by an active BuildAction
+        this.willRollback = !this.tileInfo.all().before(this).contains { it is BuildAction && it.willRollback };
+    }
     override fun undo() {
-        val buildSeq: Seq<BuildAction> = this.tileInfo.all().only(BuildAction::class.java).filter { it.id < this.id};
+        val buildSeq: Seq<BuildAction> = this.tileInfo.all().before(this).only(BuildAction::class.java);
         // REMOVEME: Required?
         Log.info("Old @", buildSeq);
         // TODO: Will this cause issues?
