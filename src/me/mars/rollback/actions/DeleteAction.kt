@@ -21,16 +21,17 @@ class DeleteAction(uuid: String, pos: Int, team: Team) : Action(uuid, pos, team)
         // REMOVEME: Required?
         Log.info("Old @", buildSeq);
         // TODO: Will this cause issues?
-        // The build was overriden by some other player, ignore the undo
-//        if (buildSeq.any { it.uuid != this.uuid && it.id > this.id }) return;
-        if (buildSeq.isEmpty) return;
+        if (buildSeq.isEmpty) {
+            Log.warn("@ has no previous build logs")
+            return;
+        };
         val latestBuild: BuildAction = if (buildSeq.size == 1 ) {
             buildSeq.first();
         } else {
             buildSeq.selectRanked(Comparator.comparingInt { -it.id }, 1)
         };
         val configSeq: Seq<ConfigAction> = this.tileInfo.all().only(ConfigAction::class.java);
-        configSeq.filter() { it.id > this.id && it.id < latestBuild.id && it.pos == this.pos};
+        configSeq.filter { it.id < this.id && it.id > latestBuild.id && it.pos == this.pos};
         val latestConfig: ConfigAction? = if (configSeq.isEmpty) null else
             configSeq.selectRanked(Comparator.comparingInt { -it.id }, 1)
         if (RollbackPlugin.debug) {

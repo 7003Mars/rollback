@@ -53,6 +53,9 @@ fun addListeners() {
             return@on
         };
         val uuid: String = it.unit.player.uuid();
+        // Deconstruct finished, ignore it
+        // Not actually sure why it would result in the build being null though.
+        if (it.tile.build == null || it.tile.build.block is ConstructBlock) return@on;
         val pos: Int = it.tile.build.pos();
         val block: Block = it.tile.build.block;
         tileStore.setAction(BuildAction(uuid, pos, it.team, block, it.tile.build.rotation.toByte()), block.size);

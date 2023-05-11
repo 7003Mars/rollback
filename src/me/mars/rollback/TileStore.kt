@@ -23,9 +23,13 @@ class TileStore(var width: Int, var height: Int) {
         this.resized();
 
         Events.run(EventType.Trigger.update) {
-            if (this.lock.isLocked) return@run;
-            this.taskQueue.each(Runnable::run);
-            this.taskQueue.clear();
+            if (!this.lock.tryLock()) return@run;
+            try {
+                this.taskQueue.each(Runnable::run);
+                this.taskQueue.clear();
+            } finally {
+                this.lock.unlock();
+            }
         }
     }
 
@@ -59,6 +63,7 @@ class TileStore(var width: Int, var height: Int) {
     }
 
     fun setAction(action: Action, blockSize: Int) {
+        Log.info(action);
         this.taskQueue.add {
             val offset: Int = (blockSize-1)/2;
             val sx: Int = Point2.x(action.pos).toInt() - offset;
@@ -118,6 +123,7 @@ class TileStore(var width: Int, var height: Int) {
                 Log.info(actions);
                 for (i in actions.size-1 downTo  0) {
                     actions.get(i).undo();
+
                 }
             } finally {
                 this.lock.unlock();
