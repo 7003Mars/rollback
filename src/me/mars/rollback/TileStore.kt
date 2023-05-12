@@ -8,6 +8,7 @@ import arc.struct.Seq
 import arc.util.Log
 import arc.util.Threads
 import me.mars.rollback.actions.Action
+import me.mars.rollback.actions.DeleteAction
 import mindustry.game.EventType
 import java.lang.IllegalArgumentException
 import java.util.concurrent.ExecutorService
@@ -18,7 +19,7 @@ class TileStore(var width: Int, var height: Int) {
     private val taskQueue: Seq<Runnable> = Seq();
     private var lock: ReentrantLock = ReentrantLock();
 
-    private val tiles: Seq<TileInfo> = Seq();
+    private val tiles: Seq<TileInfo?> = Seq();
     init {
         this.resized();
 
@@ -36,19 +37,17 @@ class TileStore(var width: Int, var height: Int) {
     fun resized() {
         this.tiles.clear();
         this.tiles.setSize(this.width * this.height);
-        for (x in 0  until this.width) {
-            for (y in 0 until this.height) {
-                val pos = y * width + x;
-                this.tiles.set(pos, TileInfo(Point2.pack(x, y)));
-            }
-        }
     }
 
     fun get(x: Int, y: Int): TileInfo {
         if (x < 0 || x >= this.width || y < 0 || y >= this.width) {
             throw IllegalArgumentException("Coordinates $x, $y are out of range (${this.width}, ${this.height})");
         }
-        return this.tiles.get(y * this.width + x);
+        val index: Int = y * this.width + x;
+        if (this.tiles.get(index) == null) {
+            this.tiles.set(index, TileInfo(Point2.pack(x, y)));
+        }
+        return this.tiles.get(y * this.width + x)!!;
     }
 
     fun get(pos: Int): TileInfo {
@@ -59,7 +58,7 @@ class TileStore(var width: Int, var height: Int) {
         if (x < 0 || x >= this.width || y < 0 || y >= this.width) {
             throw IllegalArgumentException("Coordinates $x, $y are out of range (${this.width}, ${this.height})");
         }
-        this.tiles.get(y * this.width + x).add(action);
+        this.get(x, y).add(action);
     }
 
     fun setAction(action: Action, blockSize: Int) {
@@ -82,9 +81,11 @@ class TileStore(var width: Int, var height: Int) {
             val offset: Int = (blockSize-1)/2;
             val sx: Int = x-offset;
             val sy: Int = y-offset;
-            for (i in sx until sx+blockSize) {
-                for (j in sy until sy+blockSize) {
-                    this.get(i, j).clear();
+            for (_x in sx until sx+blockSize) {
+                for (_y in sy until sy+blockSize) {
+                    val index: Int = _y * this.width + _x;
+                    this.tiles.get(index)?.clear();
+                    this.tiles.set(index, null);
                 }
             }
         }
@@ -95,7 +96,8 @@ class TileStore(var width: Int, var height: Int) {
             this.lock.lock();
             val added: ObjectSet<Action> = ObjectSet();
             val selected: Seq<Action> = Seq();
-            for (tileInfo: TileInfo in this.tiles) {
+            for (tileInfo: TileInfo? in this.tiles) {
+                if (tileInfo == null) continue;
                 for (action: Action in tileInfo.actions) {
                     if (check.get(action) && !added.contains(action)) {
                         selected.add(action);
@@ -120,6 +122,12 @@ class TileStore(var width: Int, var height: Int) {
                 Log.info("Before removal:");
                 Log.info(actions);
                 actions.filter(Action::willRollback);
+                // Rollback cores first to prevent game over
+                val coreUndo = actions.select { it is DeleteAction && it.undoToCore() }.`as`<DeleteAction>();
+                Log.info("Core undo:");
+                coreUndo.each(DeleteAction::undo);
+                Log.info(coreUndo);
+                Log.info("Final: @", actions)
                 Log.info(actions);
                 for (i in actions.size-1 downTo  0) {
                     actions.get(i).undo();

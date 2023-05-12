@@ -1,8 +1,11 @@
 package me.mars.rollback
+import arc.Core
+import arc.Events
 import arc.util.CommandHandler
 import arc.util.Log
 import arc.util.Strings
 import arc.util.Time
+import mindustry.game.EventType
 import mindustry.gen.Groups
 import mindustry.gen.Player
 import mindustry.mod.Plugin
@@ -29,5 +32,9 @@ class RollbackPlugin(): Plugin() {
         handler.register("fake", "fake") {
             tileStore.collectLatest { true }.each { it.uuid = "" }
         }
+
+//        Events.on(EventType.PlayerLeave::class.java) {
+//            Core.app.exit();
+//        }
     }
 }
