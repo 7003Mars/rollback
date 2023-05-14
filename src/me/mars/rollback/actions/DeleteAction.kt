@@ -7,12 +7,13 @@ import me.mars.rollback.RollbackPlugin
 import me.mars.rollback.before
 import me.mars.rollback.only
 import mindustry.Vars
-import mindustry.content.Blocks
-import mindustry.game.Team
-import mindustry.gen.Call
 import mindustry.Vars.world
+import mindustry.game.Team
+import mindustry.gen.Building
+import mindustry.gen.Call
 import mindustry.world.blocks.storage.CoreBlock
 import mindustry.world.blocks.storage.CoreBlock.CoreBuild
+import mindustry.world.modules.ItemModule
 
 class DeleteAction(uuid: String, pos: Int, team: Team) : Action(uuid, pos, team) {
     override fun preUndo() {
@@ -36,7 +37,16 @@ class DeleteAction(uuid: String, pos: Int, team: Team) : Action(uuid, pos, team)
         }
         if (latestBuild.block is CoreBlock) {
             // Since core undos run first, the current building *should* be a core
-            Core.app.post { world.tile(this.pos).setNet(latestBuild.block, this.team, latestBuild.rotation.toInt()) };
+            Core.app.post {
+                // TODO: Not sure if ItemModules are shared among cores.
+                /** @see mindustry.world.blocks.storage.CoreBlock.CoreBuild.onRemoved in the future*/
+                val items: ItemModule? = world.build(this.pos)?.takeIf { it is CoreBuild }?.items?.copy();
+                Log.info("Current items: @", items);
+                world.tile(this.pos).setNet(latestBuild.block, this.team, latestBuild.rotation.toInt());
+                Log.info("Current is @", world.build(this.pos));
+                if (items != null) world.build(this.pos).items.set(items);
+
+            }
         } else {
             world.tile(this.pos).setNet(latestBuild.block, this.team, latestBuild.rotation.toInt());
         }

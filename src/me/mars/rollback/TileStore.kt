@@ -127,6 +127,7 @@ class TileStore(var width: Int, var height: Int) {
                 Log.info("Core undo:");
                 coreUndo.each(DeleteAction::undo);
                 Log.info(coreUndo);
+                actions.removeAll(coreUndo);
                 Log.info("Final: @", actions)
                 Log.info(actions);
                 for (i in actions.size-1 downTo  0) {
