@@ -40,7 +40,7 @@ class TileStore(var width: Int, var height: Int) {
     }
 
     fun get(x: Int, y: Int): TileInfo {
-        if (x < 0 || x >= this.width || y < 0 || y >= this.width) {
+        if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
             throw IllegalArgumentException("Coordinates $x, $y are out of range (${this.width}, ${this.height})");
         }
         val index: Int = y * this.width + x;
@@ -55,7 +55,7 @@ class TileStore(var width: Int, var height: Int) {
     }
 
     private fun set(x: Int, y: Int, action: Action) {
-        if (x < 0 || x >= this.width || y < 0 || y >= this.width) {
+        if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
             throw IllegalArgumentException("Coordinates $x, $y are out of range (${this.width}, ${this.height})");
         }
         this.get(x, y).add(action);
