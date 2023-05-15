@@ -8,8 +8,8 @@ fun <T> Seq<T>.lastOpt(): T? {
     return this.peek();
 }
 
-fun <T> Seq<in T>.only(cls: Class<T>): Seq<T> {
-    return this.filter {it != null && it::class.java == cls}.`as`();
+inline fun <reified T> Seq<in T>.only(): Seq<T> {
+    return this.filter {it is T}.`as`();
 }
 
 fun Seq<Action>.before(me: Action): Seq<Action> {

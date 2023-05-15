@@ -22,13 +22,13 @@ class DeleteAction(uuid: String, pos: Int, team: Team) : Action(uuid, pos, team)
         this.willRollback = !this.tileInfo.all().before(this).contains { it is BuildAction && it.willRollback };
     }
     override fun undo() {
-        val buildSeq: Seq<BuildAction> = this.tileInfo.all().before(this).only(BuildAction::class.java);
+        val buildSeq: Seq<BuildAction> = this.tileInfo.all().before(this).only();
         if (buildSeq.isEmpty) {
             Log.warn("@ has no previous build logs. Should not happen!")
             return;
         };
         val latestBuild: BuildAction = buildSeq.selectRanked(Comparator.comparingInt { -it.id }, 1);
-        val configSeq: Seq<ConfigAction> = this.tileInfo.all().only(ConfigAction::class.java);
+        val configSeq: Seq<ConfigAction> = this.tileInfo.all().only();
         configSeq.filter { it.id < this.id && it.id > latestBuild.id && it.pos == this.pos};
         val latestConfig: ConfigAction? = if (configSeq.isEmpty) null else
             configSeq.selectRanked(Comparator.comparingInt { -it.id }, 1)
@@ -53,7 +53,7 @@ class DeleteAction(uuid: String, pos: Int, team: Team) : Action(uuid, pos, team)
         if (latestConfig != null) Call.tileConfig(null, Vars.world.build(this.pos), latestConfig.config)
     }
     fun undoToCore(): Boolean {
-        val buildSeq: Seq<BuildAction> = this.tileInfo.all().before(this).only(BuildAction::class.java);
+        val buildSeq: Seq<BuildAction> = this.tileInfo.all().before(this).only();
         if (buildSeq.isEmpty) {
             return false;
         };

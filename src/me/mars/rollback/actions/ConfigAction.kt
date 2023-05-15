@@ -19,7 +19,7 @@ class ConfigAction(uuid: String, pos: Int, team: Team, val config: Any) : Action
             .contains { (it is BuildAction || it is ConfigAction) && it.willRollback };
     }
     override fun undo() {
-        val latestRemove: DeleteAction? = this.tileInfo.all().only(DeleteAction::class.java).filter { it.id < this.id}.lastOpt();
+        val latestRemove: DeleteAction? = this.tileInfo.all().only<DeleteAction>().filter { it.id < this.id}.lastOpt();
         val lowerBound: Int = latestRemove?.id ?: 0;
 
         val prev: ConfigAction? = this.tileInfo.all().filter {

@@ -40,11 +40,11 @@ class TileInfo(val pos: Int) {
     }
 
     fun all(): Seq<Action> {
-        tmpSeq.clear().addAll(this.actions);
-//        if (this.prevBuild != null) tmpSeq.add(this.prevBuild);
+        tmpSeq.clear();
         this.prevBuild?.let { tmpSeq.add(it) }
-        if (this.prevDelete != null) tmpSeq.add(this.prevDelete);
-        if (this.prevConfig != null) tmpSeq.add(this.prevConfig);
+        this.prevDelete?.let { tmpSeq.add(it) }
+        this.prevConfig?.let { tmpSeq.add(it) }
+        tmpSeq.addAll(this.actions);
         return tmpSeq;
     }
 
