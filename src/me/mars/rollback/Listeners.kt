@@ -27,21 +27,36 @@ fun addListeners() {
             val block: Block = it.block;
             Log.info(it);
             tileStore.setAction(BuildAction("", it.pos(), it.team, block, it.rotation.toByte()), block.size);
-            if (block.configurable && it.config() != null) {
+            if (block.configurable) {
                 tileStore.setAction(ConfigAction("", it.pos(), it.team, it.config()), block.size);
             }
         }
     }
 
-    Events.on(BlockDestroyEvent::class.java) {
-        tileStore.clear(it.tile.x.toInt(), it.tile.y.toInt(), it.tile.block().size);
+    Events.on(PickupEvent::class.java) {
+        if (it.build == null) return@on;
+        // Thankfully the build tile doesn't update before the event is fired.. for now
+        val latestBuild: BuildAction? = tileStore.get(it.build.tileX(), it.build.tileY())
+            .all().only<BuildAction>().sort(Comparator.comparing(Action::id)).lastOpt();
+        if (latestBuild?.block != it.build.block) {
+            Log.info("Build mismatch: @ and @", latestBuild, it.build.block);
+            return@on;
+        }
+        tileStore.setAction(DeleteAction(it.carrier.player?.uuid()?: "", latestBuild!!.pos, it.carrier.team), latestBuild.block.size);
+    }
+
+    Events.on(PayloadDropEvent::class.java) {
+        if (it.build == null) return@on;
+        val block: Block = it.build.block;
+        tileStore.setAction(BuildAction(it.carrier.uuidOrEmpty(), it.build.pos(), it.carrier.team,
+            block, it.build.rotation.toByte()), block.size);
     }
 
     Events.on(BlockBuildBeginEvent::class.java) {
         if (it.unit.player == null) {
             Log.info("no player")
         };
-        val uuid: String = it.unit.player?.uuid()?: "";
+        val uuid: String = it.unit.uuidOrEmpty();
         // Instant core upgrade
         if (it.tile.build is CoreBuild) {
             val build: CoreBuild = it.tile.build as CoreBuild;
@@ -77,7 +92,7 @@ fun addListeners() {
         if (it.unit.player == null) {
             Log.info("no player")
         };
-        val uuid: String = it.unit.player?.uuid()?: "";
+        val uuid: String = it.unit.uuidOrEmpty();
         // Deconstruct finished, ignore it
         // Not actually sure why it would result in the build being null though.
         if (it.tile.build == null || it.tile.build.block is ConstructBlock) return@on;

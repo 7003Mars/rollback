@@ -8,7 +8,7 @@ import mindustry.Vars
 import mindustry.game.Team
 import mindustry.gen.Call
 
-class ConfigAction(uuid: String, pos: Int, team: Team, val config: Any) : Action(uuid, pos, team){
+class ConfigAction(uuid: String, pos: Int, team: Team, val config: Any?) : Action(uuid, pos, team){
 
     override fun preUndo() {
         // I intend to configure a block, however it is useless if:
