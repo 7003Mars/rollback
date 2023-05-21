@@ -1,8 +1,10 @@
 import io.github.liplum.mindustry.*
+import java.time.LocalTime
 
 plugins {
     kotlin("jvm") version "1.8.0"
     id("io.github.liplum.mgpp") version "1.2.0"
+    id("maven-publish")
 }
 
 sourceSets {
@@ -31,10 +33,7 @@ mindustry {
         mindustry on "v143.1"
         arc on "v143.1"
     }
-//    client {
-//        mindustry from GameLocation("mindustry-antigrief", "mindustry-client-v7-builds",
-//            "1396", "desktop.jar")
-//    }
+    meta.version = if (hasProperty("modVer")) property("modVer") as String else "build-${LocalTime.now()}"
     server {
         mindustry official "v143.1"
     }
@@ -44,4 +43,16 @@ mindustry {
 }
 mindustryAssets {
     root at "$projectDir/assets"
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            groupId = "me.mars"
+            artifactId = "rollback"
+            version = property("modVer") as String
+
+            from(components["java"])
+        }
+    }
 }

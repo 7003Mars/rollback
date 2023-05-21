@@ -3,6 +3,7 @@ import arc.util.CommandHandler
 import arc.util.Log
 import arc.util.Strings
 import arc.util.Time
+import mindustry.Vars
 import mindustry.gen.Groups
 import mindustry.gen.Player
 import mindustry.mod.Plugin
@@ -11,9 +12,11 @@ class RollbackPlugin : Plugin() {
     companion object {
         @JvmStatic val tileStore: TileStore = TileStore(0, 0)
         @JvmStatic val debug: Boolean = true
+        @JvmStatic val internalName: String = "rollback"
     }
 
     override fun init() {
+        Log.info("Rollback running version ${Vars.mods.getMod(internalName).meta.version}")
         addListeners()
     }
 
