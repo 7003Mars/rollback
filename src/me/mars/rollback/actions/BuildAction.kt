@@ -14,13 +14,13 @@ class BuildAction(uuid: String, pos: Int, team: Team, val block: Block, val rota
     override fun preUndo() {
         // I intend to remove a block, however it is useless if:
         // A DeleteAction before me runs
-        this.willRollback = !this.tileInfo.all().before(this).contains { it is DeleteAction && it.willRollback};
+        this.willRollback = !this.tileInfo.all().before(this).contains { it is DeleteAction && it.willRollback}
     }
 
     override fun undo() {
-        if (this.block is CoreBlock) return;
+        if (this.block is CoreBlock) return
         if (RollbackPlugin.debug) Log.info("Undo @ to air", this)
-        world.tile(this.pos).setNet(Blocks.air);
+        world.tile(this.pos).setNet(Blocks.air)
     }
 
     override fun toString(): String {
