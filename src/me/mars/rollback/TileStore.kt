@@ -5,12 +5,10 @@ import arc.func.Boolf
 import arc.math.geom.Point2
 import arc.struct.ObjectSet
 import arc.struct.Seq
-import arc.util.Log
 import arc.util.Threads
 import me.mars.rollback.actions.Action
 import me.mars.rollback.actions.DeleteAction
 import mindustry.game.EventType
-import java.lang.IllegalArgumentException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.locks.ReentrantLock
 
@@ -35,11 +33,17 @@ class TileStore(var width: Int, var height: Int) {
         }
     }
 
+    /**
+     * Called on map change
+     */
     fun resized() {
         this.tiles.clear()
         this.tiles.setSize(this.width * this.height)
     }
 
+    /**
+     * Get the [TileInfo] at ([x], [y])
+     */
     fun get(x: Int, y: Int): TileInfo {
         if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
             throw IllegalArgumentException("Coordinates $x, $y are out of range (${this.width}, ${this.height})")
@@ -62,8 +66,10 @@ class TileStore(var width: Int, var height: Int) {
         this.get(x, y).add(action)
     }
 
+    /**
+     * Sets an [action] of size [blockSize]
+     */
     fun setAction(action: Action, blockSize: Int) {
-        Log.info(action)
         this.taskQueue.add {
             val offset: Int = (blockSize-1)/2
             val sx: Int = Point2.x(action.pos).toInt() - offset
@@ -77,6 +83,9 @@ class TileStore(var width: Int, var height: Int) {
         }
     }
 
+    /**
+     * Clear all action logs, assuming a block at ([x], [y]) of size [blockSize]
+     */
     fun clear(x: Int, y: Int, blockSize: Int) {
         this.taskQueue.add {
             val offset: Int = (blockSize-1)/2
@@ -92,6 +101,10 @@ class TileStore(var width: Int, var height: Int) {
         }
     }
 
+    /**
+     * Collect all actions that match the [check]
+     * Note that this method is blocking
+     */
     fun collectLatest(check: Boolf<Action>): Seq<Action> {
         try {
             this.lock.lock()
@@ -114,23 +127,20 @@ class TileStore(var width: Int, var height: Int) {
         }
     }
 
+    /**
+     * Calling this submits a task to undo the action of a player with [uuid], from [time] ticks onwards
+     */
     fun rollback(uuid: String, time: Float) {
         this.executor.submit {
             try {
                 this.lock.lock()
                 val actions: Seq<Action> = this.collectLatest { it.time > time && it.uuid == uuid }.sort { a -> a.id.toFloat()}
                 actions.each(Action::preUndo)
-                Log.info("Before removal:")
-                Log.info(actions)
                 actions.filter(Action::willRollback)
                 // Rollback cores first to prevent game over
                 val coreUndo = actions.select { it is DeleteAction && it.undoToCore() }.`as`<DeleteAction>()
-                Log.info("Core undo:")
                 coreUndo.each(DeleteAction::undo)
-                Log.info(coreUndo)
                 actions.removeAll(coreUndo)
-                Log.info("Final: @", actions)
-                Log.info(actions)
                 for (i in actions.size-1 downTo  0) {
                     actions.get(i).undo()
 
