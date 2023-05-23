@@ -11,7 +11,7 @@ import mindustry.mod.Plugin
 class RollbackPlugin : Plugin() {
     companion object {
         @JvmStatic val tileStore: TileStore = TileStore(0, 0)
-        @JvmStatic val debug: Boolean = true
+        @JvmStatic val debug: Boolean = false
         @JvmStatic val internalName: String = "rollback"
     }
 
@@ -21,6 +21,7 @@ class RollbackPlugin : Plugin() {
     }
 
     override fun registerClientCommands(handler: CommandHandler) {
+        if (!debug) return
         handler.register("rollback", "<name> [time]", "Rollback the actions of a player") {
             val player: Player = Groups.player.find { p -> p.name == it[0] } ?: return@register
             Log.info("Rollback for @", player.name)

@@ -25,7 +25,6 @@ java {
 }
 artifacts {
     archives(tasks.getByName("sourcesJar"))
-//    artifacts(sourcesJar)
 }
 repositories {
     mavenCentral()
@@ -56,7 +55,7 @@ publishing {
         create<MavenPublication>("maven") {
             groupId = "me.mars"
             artifactId = "rollback"
-            version = "1.0"/*property("modVer") as String*/
+            version = "1.1"/*property("modVer") as String*/
 
             from(components["java"])
         }
