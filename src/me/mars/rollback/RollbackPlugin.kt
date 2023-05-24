@@ -26,8 +26,8 @@ class RollbackPlugin : Plugin() {
             val player: Player = Groups.player.find { p -> p.name == it[0] } ?: return@register
             Log.info("Rollback for @", player.name)
             val uuid: String = player.uuid()
-            val ticks: Int = Strings.parseInt(it.getOrElse(1) {"1"}, 1) * Time.toMinutes.toInt() /60
-            tileStore.rollback(uuid, Time.time-ticks)
+            val millis: Int = Strings.parseInt(it.getOrElse(1) {"1"}, 1) * 1000
+            tileStore.rollback(uuid, Time.millis()-millis)
         }
 
         handler.register("fake", "fake") {

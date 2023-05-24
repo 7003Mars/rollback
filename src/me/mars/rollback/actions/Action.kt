@@ -12,7 +12,7 @@ abstract class Action(var uuid: String, val pos: Int, val team: Team) {
         var gid: Int = 0
     }
     val id: Int = gid++
-    val time: Float = Time.time
+    val time: Long = Time.millis()
     var willRollback = false
 
     abstract fun preUndo()

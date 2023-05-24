@@ -128,9 +128,9 @@ class TileStore(var width: Int, var height: Int) {
     }
 
     /**
-     * Calling this submits a task to undo the action of a player with [uuid], from [time] ticks onwards
+     * Calling this submits a task to undo the action of a player with [uuid], from [time] millis onwards
      */
-    fun rollback(uuid: String, time: Float) {
+    fun rollback(uuid: String, time: Long) {
         this.executor.submit {
             try {
                 this.lock.lock()
