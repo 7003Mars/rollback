@@ -13,7 +13,7 @@ import mindustry.world.blocks.storage.CoreBlock
 import mindustry.world.blocks.storage.CoreBlock.CoreBuild
 import mindustry.world.modules.ItemModule
 
-class DeleteAction(uuid: String, pos: Int, team: Team) : Action(uuid, pos, team) {
+class DeleteAction(uuid: String, pos: Int, blockSize: Int, team: Team) : Action(uuid, pos, blockSize, team) {
     override fun preUndo() {
         // I intend to place a block, however it is useless if:
         // My target is removed again by an active BuildAction
@@ -22,7 +22,7 @@ class DeleteAction(uuid: String, pos: Int, team: Team) : Action(uuid, pos, team)
     override fun undo() {
         val buildSeq: Seq<BuildAction> = this.tileInfo.all().before(this).only()
         if (buildSeq.isEmpty) {
-            Log.warn("@ has no previous build logs. Should not happen!")
+            Log.warn("$this has no previous build logs. Should not happen!")
             return
         }
         val latestBuild: BuildAction = buildSeq.selectRanked(Comparator.comparingInt { -it.id }, 1)
@@ -31,7 +31,7 @@ class DeleteAction(uuid: String, pos: Int, team: Team) : Action(uuid, pos, team)
         val latestConfig: ConfigAction? = if (configSeq.isEmpty) null else
             configSeq.selectRanked(Comparator.comparingInt { -it.id }, 1)
         if (RollbackPlugin.debug) {
-            Log.info("Undo @ to @, @", this, latestBuild.block, latestConfig)
+            Log.info("Undo $this to ${latestBuild.block}, $latestConfig")
         }
         if (latestBuild.block is CoreBlock) {
             // Since core undos run first, the current building *should* be a core
@@ -48,7 +48,7 @@ class DeleteAction(uuid: String, pos: Int, team: Team) : Action(uuid, pos, team)
         } else {
             world.tile(this.pos).setNet(latestBuild.block, this.team, latestBuild.rotation.toInt())
         }
-        if (latestConfig != null) Call.tileConfig(null, world.build(this.pos), latestConfig.config)
+        if (latestConfig != null) Call.tileConfig(ConfigAction.fakePlayer, world.build(this.pos), latestConfig.config)
     }
     fun undoToCore(): Boolean {
         val buildSeq: Seq<BuildAction> = this.tileInfo.all().before(this).only()

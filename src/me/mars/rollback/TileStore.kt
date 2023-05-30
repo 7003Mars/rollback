@@ -14,7 +14,7 @@ import java.util.concurrent.locks.ReentrantLock
 
 class TileStore(var width: Int, var height: Int) {
     private val executor: ExecutorService = Threads.executor("rollback", 1)
-    private val taskQueue: Seq<Runnable> = Seq()
+    val taskQueue: Seq<Runnable> = Seq()
     private var lock: ReentrantLock = ReentrantLock()
 
     private val tiles: Seq<TileInfo?> = Seq()
@@ -67,16 +67,16 @@ class TileStore(var width: Int, var height: Int) {
     }
 
     /**
-     * Sets an [action] of size [blockSize]
+     * Sets an [action]
      */
-    fun setAction(action: Action, blockSize: Int) {
+    fun setAction(action: Action) {
         this.taskQueue.add {
-            val offset: Int = (blockSize-1)/2
+            val offset: Int = (action.blockSize-1)/2
             val sx: Int = Point2.x(action.pos).toInt() - offset
             val sy: Int = Point2.y(action.pos).toInt() - offset
 
-            for (x in sx until sx+blockSize) {
-                for (y in sy until sy+blockSize) {
+            for (x in sx until sx+action.blockSize) {
+                for (y in sy until sy+action.blockSize) {
                     this.set(x, y, action)
                 }
             }
@@ -84,19 +84,16 @@ class TileStore(var width: Int, var height: Int) {
     }
 
     /**
-     * Clear all action logs, assuming a block at ([x], [y]) of size [blockSize]
+     * Clear all action logs from [id] onwards, assuming a block at ([x], [y]) of size [blockSize]
      */
-    fun clear(x: Int, y: Int, blockSize: Int) {
-        this.taskQueue.add {
-            val offset: Int = (blockSize-1)/2
-            val sx: Int = x-offset
-            val sy: Int = y-offset
-            for (_x in sx until sx+blockSize) {
-                for (_y in sy until sy+blockSize) {
-                    val index: Int = _y * this.width + _x
-                    this.tiles.get(index)?.clear()
-                    this.tiles.set(index, null)
-                }
+    fun clear(x: Int, y: Int, blockSize: Int, id: Int) {
+        val offset: Int = (blockSize-1)/2
+        val sx: Int = x-offset
+        val sy: Int = y-offset
+        for (_x in sx until sx+blockSize) {
+            for (_y in sy until sy+blockSize) {
+                val index: Int = _y * this.width + _x
+                this.tiles.get(index)?.clear(id)
             }
         }
     }
@@ -135,16 +132,18 @@ class TileStore(var width: Int, var height: Int) {
             try {
                 this.lock.lock()
                 val actions: Seq<Action> = this.collectLatest { it.time > time && it.uuid == uuid }.sort { a -> a.id.toFloat()}
+//                Log.info("Collected: \n@", actions);
                 actions.each(Action::preUndo)
                 actions.filter(Action::willRollback)
+//                Log.info("filtered:\n@", actions)
                 // Rollback cores first to prevent game over
-                val coreUndo = actions.select { it is DeleteAction && it.undoToCore() }.`as`<DeleteAction>()
+                val coreUndo = actions.popAll { it is DeleteAction && it.undoToCore() }.`as`<DeleteAction>()
                 coreUndo.each(DeleteAction::undo)
-                actions.removeAll(coreUndo)
                 for (i in actions.size-1 downTo  0) {
                     actions.get(i).undo()
-
                 }
+                coreUndo.each { this.clear(Point2.x(it.pos).toInt(), Point2.y(it.pos).toInt(), it.blockSize, it.id) }
+                actions.each { this.clear(Point2.x(it.pos).toInt(), Point2.y(it.pos).toInt(), it.blockSize, it.id) }
             } finally {
                 this.lock.unlock()
             }

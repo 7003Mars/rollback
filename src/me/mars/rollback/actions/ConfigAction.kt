@@ -8,7 +8,7 @@ import mindustry.game.Team
 import mindustry.gen.Call
 import mindustry.gen.Player
 
-class ConfigAction(uuid: String, pos: Int, team: Team, val config: Any?) : Action(uuid, pos, team){
+class ConfigAction(uuid: String, pos: Int, blockSize: Int, team: Team, val config: Any?) : Action(uuid, pos, blockSize, team){
     companion object {
         val fakePlayer: Player = Player.create()
     }

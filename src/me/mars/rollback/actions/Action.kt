@@ -7,7 +7,7 @@ import me.mars.rollback.TileInfo
 import mindustry.game.Team
 
 // TODO: uuid should be val, not var
-abstract class Action(var uuid: String, val pos: Int, val team: Team) {
+abstract class Action(var uuid: String, val pos: Int, val blockSize: Int, val team: Team) {
     companion object {
         var gid: Int = 0
     }
@@ -24,6 +24,6 @@ abstract class Action(var uuid: String, val pos: Int, val team: Team) {
     }
 
     override fun toString(): String {
-        return this.javaClass.simpleName + "(${Point2.x(this.pos)}, ${Point2.y(this.pos)})#${this.id}@${this.time.toInt()}"
+        return this.javaClass.simpleName + "(${Point2.x(this.pos)}, ${Point2.y(this.pos)})#${this.id}"
     }
 }

@@ -55,7 +55,7 @@ publishing {
         create<MavenPublication>("maven") {
             groupId = "me.mars"
             artifactId = "rollback"
-            version = "1.1"/*property("modVer") as String*/
+            version = "1.2"/*property("modVer") as String*/
 
             from(components["java"])
         }

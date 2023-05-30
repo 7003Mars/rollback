@@ -17,7 +17,7 @@ class TileInfo {
     val actions: Seq<Action> = Seq()
 
     fun add(action: Action) {
-        if (action.uuid != this.actions.firstOpt()?.uuid) {
+        if (this.actions.any() && action.uuid != this.actions.first().uuid) {
             this.actions.each{
                 when (it) {
                     is BuildAction -> this.prevBuild = it
@@ -30,11 +30,14 @@ class TileInfo {
         this.actions.add(action)
     }
 
-    fun clear() {
-       this.actions.clear()
-        this.prevBuild = null
-        this.prevDelete = null
-        this.prevConfig = null
+    /**
+     * Clears all actions with an id >= [id]
+     */
+    fun clear(id: Int) {
+       this.actions.filter { it.id < id }
+        this.prevBuild = this.prevBuild.takeIf { it != null && it.id < id }
+        this.prevDelete = this.prevDelete.takeIf { it != null && it.id < id }
+        this.prevConfig = this.prevConfig.takeIf { it != null && it.id < id }
     }
 
     fun all(): Seq<Action> {
