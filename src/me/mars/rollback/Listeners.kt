@@ -84,9 +84,10 @@ fun addListeners() {
             Log.warn("Build is @, not ConstructBuild", it.tile.build)
             return@on
         }
-        val size: Int = it.tile.build.block.size
+        // TODO: Why'd I use this?
+//        val size: Int = it.tile.build.block.size
         for (prev: Building in (it.tile.build as ConstructBuild).prevBuild) {
-            tileStore.setAction(DeleteAction(uuid, prev.pos(), size, it.team))
+            tileStore.setAction(DeleteAction(uuid, prev.pos(), prev.block.size, it.team))
         }
     }
 
