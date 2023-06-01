@@ -37,7 +37,7 @@ fun addListeners() {
 
     Events.on(PickupEvent::class.java) {
         if (it.build == null) return@on
-        // Thankfully the build tile doesn't update before the event is fired.. for now
+        // Thankfully the build tile doesn't update before the event is fired... for now
         val latestBuild: BuildAction? = tileStore.get(it.build.tileX(), it.build.tileY())
             .all().only<BuildAction>().sort(Comparator.comparing(Action::id)).lastOpt()
         if (latestBuild?.block != it.build.block) {
@@ -115,11 +115,12 @@ fun addListeners() {
     }
 
     Events.on(BlockDestroyEvent::class.java) {
+        val size: Int = it.tile.build.block.size
         tileStore.taskQueue.add {
             tileStore.clear(
                 it.tile.x.toInt(),
                 it.tile.y.toInt(),
-                it.tile.build.block.size,
+                size,
                 0
             )
         }
