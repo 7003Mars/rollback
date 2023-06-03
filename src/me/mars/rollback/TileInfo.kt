@@ -1,10 +1,13 @@
 package me.mars.rollback
 
+import arc.func.Boolf
 import arc.struct.Seq
+import me.mars.rollback.RollbackPlugin.Companion.sel
 import me.mars.rollback.actions.Action
 import me.mars.rollback.actions.BuildAction
 import me.mars.rollback.actions.ConfigAction
 import me.mars.rollback.actions.DeleteAction
+import java.util.Comparator
 
 class TileInfo {
     companion object {
@@ -47,6 +50,16 @@ class TileInfo {
         this.prevConfig?.let { tmpSeq.add(it) }
         tmpSeq.addAll(this.actions)
         return tmpSeq
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun <T : Action> select(index: Int, cls: Class<T>, check: Boolf<in Action>): T? {
+        val seq: Seq<Action> = this.all()
+        seq.filter { check.get(it) && it.javaClass == cls }
+        if (seq.isEmpty) return null
+        if (seq.size == 1) return seq.first() as T
+        val i: Int = if (index < 0) seq.size - index+1 else index+1
+        return sel.select(seq.toArray(cls), Comparator.comparingInt(Action::id), i, seq.size)
     }
 
 }

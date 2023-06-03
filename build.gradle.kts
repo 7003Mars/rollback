@@ -34,6 +34,7 @@ dependencies {
     importMindustry()
 }
 mindustry {
+    projectType = ProjectType.Plugin
     dependency {
         mindustry on "v143.1"
         arc on "v143.1"

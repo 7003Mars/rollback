@@ -131,7 +131,7 @@ class TileStore(var width: Int, var height: Int) {
         this.executor.submit {
             try {
                 this.lock.lock()
-                val actions: Seq<Action> = this.collectLatest { it.time > time && it.uuid == uuid }.sort { a -> a.id.toFloat()}
+                val actions: Seq<Action> = this.collectLatest { it.time > time && it.uuid == uuid }.sort()
 //                Log.info("Collected: \n@", actions);
                 actions.each(Action::preUndo)
                 actions.filter(Action::willRollback)

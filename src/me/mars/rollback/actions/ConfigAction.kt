@@ -1,8 +1,6 @@
 package me.mars.rollback.actions
 
 import me.mars.rollback.before
-import me.mars.rollback.lastOpt
-import me.mars.rollback.only
 import mindustry.Vars
 import mindustry.game.Team
 import mindustry.gen.Call
@@ -22,11 +20,11 @@ class ConfigAction(uuid: String, pos: Int, blockSize: Int, team: Team, val confi
             .contains { (it is BuildAction || it is ConfigAction) && it.willRollback }
     }
     override fun undo() {
-        val latestRemove: DeleteAction? = this.tileInfo.all().only<DeleteAction>().filter { it.id < this.id}.lastOpt()
+        val latestRemove: DeleteAction? = this.tileInfo.select(-1, DeleteAction::class.java) { it.id < this.id}
         val lowerBound: Int = latestRemove?.id ?: 0
 
-        val prev: ConfigAction? = this.tileInfo.all().filter {
-            it is ConfigAction && it.pos == this.pos && it.id < this.id && it. id > lowerBound}.lastOpt() as ConfigAction?
+        val prev: ConfigAction? = this.tileInfo.select(-1,
+            ConfigAction::class.java) {it.pos == this.pos && it.id < this.id && it.id > lowerBound}
 
         // TODO: This thing triggers the Config event, use tileConfig__forward (non-public method)
         Call.tileConfig(fakePlayer, Vars.world.build(this.pos), prev?.config)

@@ -1,19 +1,22 @@
 package me.mars.rollback
 
 import arc.Events
+import arc.math.geom.Point2
 import arc.struct.ObjectSet
 import arc.util.Log
 import me.mars.rollback.RollbackPlugin.Companion.debug
 import me.mars.rollback.RollbackPlugin.Companion.tileStore
-import me.mars.rollback.actions.Action
 import me.mars.rollback.actions.BuildAction
 import me.mars.rollback.actions.ConfigAction
 import me.mars.rollback.actions.DeleteAction
 import mindustry.Vars
+import mindustry.content.Blocks
 import mindustry.game.EventType.*
 import mindustry.game.Team
 import mindustry.gen.Building
 import mindustry.gen.Groups
+import mindustry.logic.LExecutor
+import mindustry.logic.TileLayer
 import mindustry.world.Block
 import mindustry.world.blocks.ConstructBlock
 import mindustry.world.blocks.ConstructBlock.ConstructBuild
@@ -27,7 +30,6 @@ fun addListeners() {
 
         Groups.build.each {
             val block: Block = it.block
-            Log.info(it)
             tileStore.setAction(BuildAction("", it.pos(), block.size, it.team, block, it.rotation.toByte()))
             if (block.configurable) {
                 tileStore.setAction(ConfigAction("", it.pos(), block.size, it.team, it.config()))
@@ -39,7 +41,7 @@ fun addListeners() {
         if (it.build == null) return@on
         // Thankfully the build tile doesn't update before the event is fired... for now
         val latestBuild: BuildAction? = tileStore.get(it.build.tileX(), it.build.tileY())
-            .all().only<BuildAction>().sort(Comparator.comparing(Action::id)).lastOpt()
+            .select(-1, BuildAction::class.java) { true }
         if (latestBuild?.block != it.build.block) {
             Log.warn("Build mismatch: @ and @", latestBuild, it.build.block)
             return@on
@@ -69,8 +71,7 @@ fun addListeners() {
             val added: ObjectSet<BuildAction> = ObjectSet()
             for (x in sx until sx+size) {
                 for (y in sy until sy+size) {
-                    val latestBuild: BuildAction = tileStore.get(x, y).all().only<BuildAction>()
-                        .sort(Comparator.comparing(Action::id)).lastOpt() ?: continue
+                    val latestBuild: BuildAction = tileStore.get(x, y).select(-1, BuildAction::class.java) {true} ?: continue
                     if (added.contains(latestBuild)) continue
                     if (debug) Log.info("Core replaced: @", latestBuild)
                     tileStore.setAction(DeleteAction(uuid, latestBuild.pos, latestBuild.block.size, it.team))
@@ -126,6 +127,36 @@ fun addListeners() {
         }
     }
 
-
-
 }
+
+class Executor : LExecutor() {
+    override fun runOnce() {
+        // TODO: Coded while half awake, please check through
+        val instr: LInstruction = this.instructions[(this.counter.numval+1).toInt()]
+        if (instr is SetBlockI) {
+            if (instr.layer == TileLayer.block) {
+                val b: Block = this.obj(instr.block).takeIf { it is Block } as Block? ?: return
+                val x: Int = this.numi(instr.x)
+                val y: Int = this.numi(instr.y)
+                val sx: Int = x+b.sizeOffset
+                val sy: Int = y+b.sizeOffset
+                val added: ObjectSet<Building> = ObjectSet()
+                for (_x in sx until sx+b.size) {
+                    for (_y in sy until sy+b.size) {
+                        val build: Building = Vars.world.build(_x, _y) ?: continue
+                        if (build is ConstructBuild || added.contains(build)) continue
+                        tileStore.setAction(DeleteAction("", build.pos(), build.block.size, build.team))
+                        added.add(build)
+                    }
+                }
+
+                if (b != Blocks.air) {
+                    val team: Team = this.team(instr.team) ?: Team.derelict
+                    tileStore.setAction(BuildAction("", Point2.pack(x, y), b.size, team, b, 0))
+                }
+            }
+        }
+        super.runOnce()
+    }
+}
+

@@ -1,8 +1,5 @@
 package me.mars.rollback
-import arc.util.CommandHandler
-import arc.util.Log
-import arc.util.Strings
-import arc.util.Time
+import arc.util.*
 import mindustry.Vars
 import mindustry.gen.Groups
 import mindustry.gen.Player
@@ -11,12 +8,14 @@ import mindustry.mod.Plugin
 class RollbackPlugin : Plugin() {
     companion object {
         @JvmStatic val tileStore: TileStore = TileStore(0, 0)
-        @JvmStatic val debug: Boolean = false
+        @JvmStatic val debug: Boolean = OS.hasEnv("rollback.debug")
         @JvmStatic val internalName: String = "rollback"
+        val sel: Select = Select()
     }
 
     override fun init() {
         Log.info("Rollback running version ${Vars.mods.getMod(internalName).meta.version}")
+        if (debug) Log.info("Debug mode is enabled, expect more logs")
         addListeners()
     }
 

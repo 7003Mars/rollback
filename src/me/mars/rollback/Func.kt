@@ -5,11 +5,6 @@ import arc.struct.Seq
 import me.mars.rollback.actions.Action
 import mindustry.gen.Unit
 
-fun <T> Seq<T>.lastOpt(): T? {
-    if (this.size == 0) return null
-    return this.peek()
-}
-
 inline fun <reified T> Seq<in T>.only(): Seq<T> {
     return this.filter {it is T}.`as`()
 }
@@ -30,7 +25,6 @@ fun <T> Seq<T>.popAll(check: Boolf<T>): Seq<T> {
         }
     }
     return res
-
 }
 
 fun Unit.uuidOrEmpty(): String {
