@@ -1,5 +1,6 @@
 package me.mars.rollback.actions
 
+import arc.util.Ratekeeper
 import me.mars.rollback.before
 import mindustry.Vars
 import mindustry.game.Team
@@ -8,7 +9,13 @@ import mindustry.gen.Player
 
 class ConfigAction(uuid: String, pos: Int, blockSize: Int, team: Team, val config: Any?) : Action(uuid, pos, blockSize, team){
     companion object {
-        val fakePlayer: Player = Player.create()
+        val fakePlayer: Player = Player.create().also {
+            it.info.rate = object : Ratekeeper() {
+                override fun allow(spacing: Long, cap: Int): Boolean {
+                    return true
+                }
+            }
+        }
     }
 
     override fun preUndo() {

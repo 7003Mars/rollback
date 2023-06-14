@@ -5,6 +5,7 @@ import arc.func.Boolf
 import arc.math.geom.Point2
 import arc.struct.ObjectSet
 import arc.struct.Seq
+import arc.util.Log
 import arc.util.Threads
 import me.mars.rollback.actions.Action
 import me.mars.rollback.actions.DeleteAction
@@ -144,6 +145,9 @@ class TileStore(var width: Int, var height: Int) {
                 }
                 coreUndo.each { this.clear(Point2.x(it.pos).toInt(), Point2.y(it.pos).toInt(), it.blockSize, it.id) }
                 actions.each { this.clear(Point2.x(it.pos).toInt(), Point2.y(it.pos).toInt(), it.blockSize, it.id) }
+                Log.info("Rollback for $uuid from time $time done")
+            } catch (e: Exception) {
+              Log.err("Something went wrong during the rollback!", e)
             } finally {
                 this.lock.unlock()
             }
