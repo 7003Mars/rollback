@@ -15,6 +15,7 @@ class ConfigAction(uuid: String, pos: Int, blockSize: Int, team: Team, val confi
                     return true
                 }
             }
+            it.admin = true
         }
     }
 
