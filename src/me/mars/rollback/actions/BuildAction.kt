@@ -17,10 +17,10 @@ class BuildAction(uuid: String, pos: Int, blockSize: Int, team: Team, val block:
         this.willRollback = !this.tileInfo.all().before(this).contains { it is DeleteAction && it.willRollback}
     }
 
-    override fun undo() {
-        if (this.block is CoreBlock) return
+    override fun undo(): Run? {
+        if (this.block is CoreBlock) return null
         if (RollbackPlugin.debug) Log.info("Undo $this to air")
-        world.tile(this.pos).setNet(Blocks.air)
+        return { world.tile(this.pos).setNet(Blocks.air) }
     }
 
     override fun toString(): String {

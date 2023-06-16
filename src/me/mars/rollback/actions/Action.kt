@@ -15,9 +15,15 @@ abstract class Action(var uuid: String, val pos: Int, val blockSize: Int, val te
     val time: Long = Time.millis()
     var willRollback = false
 
+    /**
+     * Used to check if this action will be used or not
+     */
     abstract fun preUndo()
 
-    abstract fun undo()
+    /**
+     * Returns a runnable [Run] to be invoked on the main thread
+     */
+    abstract fun undo(): Run?
 
     val tileInfo: TileInfo get() {
         return tileStore.get(this.pos)
@@ -31,3 +37,5 @@ abstract class Action(var uuid: String, val pos: Int, val blockSize: Int, val te
         return this.id - other.id
     }
 }
+
+typealias Run = () -> Unit

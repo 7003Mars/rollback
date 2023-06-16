@@ -27,14 +27,16 @@ class ConfigAction(uuid: String, pos: Int, blockSize: Int, team: Team, val confi
         this.willRollback = !this.tileInfo.all().before(this)
             .contains { (it is BuildAction || it is ConfigAction) && it.willRollback }
     }
-    override fun undo() {
+    override fun undo(): Run? {
         val latestRemove: DeleteAction? = this.tileInfo.select(-1, DeleteAction::class.java) { it.id < this.id}
         val lowerBound: Int = latestRemove?.id ?: 0
 
         val prev: ConfigAction? = this.tileInfo.select(-1,
             ConfigAction::class.java) {it.pos == this.pos && it.id < this.id && it.id > lowerBound}
-
+        if (prev != null) {
+            return { Call.tileConfig(fakePlayer, Vars.world.build(this.pos), prev.config) }
+        }
+        return null
         // TODO: This thing triggers the Config event, use tileConfig__forward (non-public method)
-        Call.tileConfig(fakePlayer, Vars.world.build(this.pos), prev?.config)
     }
 }

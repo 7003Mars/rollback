@@ -1,5 +1,6 @@
 package me.mars.rollback
 
+import arc.Core
 import arc.Events
 import arc.func.Boolf
 import arc.math.geom.Point2
@@ -9,6 +10,7 @@ import arc.util.Log
 import arc.util.Threads
 import me.mars.rollback.actions.Action
 import me.mars.rollback.actions.DeleteAction
+import me.mars.rollback.actions.Run
 import mindustry.game.EventType
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.locks.ReentrantLock
@@ -141,7 +143,8 @@ class TileStore(var width: Int, var height: Int) {
                 val coreUndo = actions.popAll { it is DeleteAction && it.undoToCore() }.`as`<DeleteAction>()
                 coreUndo.each(DeleteAction::undo)
                 for (i in actions.size-1 downTo  0) {
-                    actions.get(i).undo()
+                    val runnable: Run? = actions.get(i).undo()
+                    if (runnable != null) Core.app.post(runnable)
                 }
                 coreUndo.each { this.clear(Point2.x(it.pos).toInt(), Point2.y(it.pos).toInt(), it.blockSize, it.id) }
                 actions.each { this.clear(Point2.x(it.pos).toInt(), Point2.y(it.pos).toInt(), it.blockSize, it.id) }

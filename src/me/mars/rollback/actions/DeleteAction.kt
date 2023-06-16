@@ -1,6 +1,5 @@
 package me.mars.rollback.actions
 
-import arc.Core
 import arc.struct.Seq
 import arc.util.Log
 import me.mars.rollback.RollbackPlugin
@@ -19,11 +18,11 @@ class DeleteAction(uuid: String, pos: Int, blockSize: Int, team: Team) : Action(
         // My target is removed again by an active BuildAction
         this.willRollback = !this.tileInfo.all().before(this).contains { it is BuildAction && it.willRollback }
     }
-    override fun undo() {
+    override fun undo(): Run? {
         val latestBuild: BuildAction? = this.tileInfo.select(-1, BuildAction::class.java) {it.id < this.id}
         if (latestBuild == null) {
             Log.warn("$this has no previous build logs. Should not happen!")
-            return
+            return null
         }
         val latestConfig: ConfigAction? =  this.tileInfo.select(-1,
             ConfigAction::class.java) {it.pos == this.pos && it.id < this.id && it.id > latestBuild.id}
@@ -32,18 +31,16 @@ class DeleteAction(uuid: String, pos: Int, blockSize: Int, team: Team) : Action(
         }
         if (latestBuild.block is CoreBlock) {
             // Since core undos run first, the current building *should* be a core
-            Core.app.post {
-                // TODO: Not sure if ItemModules are shared among cores.
-                /** @see mindustry.world.blocks.storage.CoreBlock.CoreBuild.onRemoved in the future*/
-                val items: ItemModule? = world.build(this.pos)?.takeIf { it is CoreBuild }?.items?.copy()
+            val items: ItemModule? = world.build(this.pos)?.takeIf { it is CoreBuild }?.items?.copy()
+            return {
                 world.tile(this.pos).setNet(latestBuild.block, this.team, latestBuild.rotation.toInt())
                 if (items != null) world.build(this.pos).items.set(items)
-
             }
-        } else {
-            world.tile(this.pos).setNet(latestBuild.block, this.team, latestBuild.rotation.toInt())
         }
-        if (latestConfig != null) Call.tileConfig(ConfigAction.fakePlayer, world.build(this.pos), latestConfig.config)
+        return {
+            world.tile(this.pos).setNet(latestBuild.block, this.team, latestBuild.rotation.toInt())
+            if (latestConfig != null) Call.tileConfig(ConfigAction.fakePlayer, world.build(this.pos), latestConfig.config)
+        }
     }
     fun undoToCore(): Boolean {
         val buildSeq: Seq<BuildAction> = this.tileInfo.all().before(this).only()
