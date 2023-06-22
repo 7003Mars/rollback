@@ -40,8 +40,14 @@ class TileStore(var width: Int, var height: Int) {
      * Called on map change
      */
     fun resized() {
-        this.tiles.clear()
-        this.tiles.setSize(this.width * this.height)
+        try {
+            this.lock.lock()
+            this.taskQueue.clear()
+            this.tiles.clear()
+            this.tiles.setSize(this.width * this.height)
+        } finally {
+            this.lock.unlock()
+        }
     }
 
     /**
@@ -73,6 +79,7 @@ class TileStore(var width: Int, var height: Int) {
      * Sets an [action]
      */
     fun setAction(action: Action) {
+        if (RollbackPlugin.debug) Log.info("Add: $action")
         this.taskQueue.add {
             val offset: Int = (action.blockSize-1)/2
             val sx: Int = Point2.x(action.pos).toInt() - offset

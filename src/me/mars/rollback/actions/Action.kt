@@ -30,7 +30,7 @@ abstract class Action(var uuid: String, val pos: Int, val blockSize: Int, val te
     }
 
     override fun toString(): String {
-        return this.javaClass.simpleName + "(${Point2.x(this.pos)}, ${Point2.y(this.pos)})#${this.id}"
+        return this.javaClass.simpleName + "@${this.uuid}:(${Point2.x(this.pos)}, ${Point2.y(this.pos)})#${this.id}"
     }
 
     override fun compareTo(other: Action): Int {

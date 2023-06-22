@@ -36,12 +36,12 @@ dependencies {
 mindustry {
     projectType = ProjectType.Plugin
     dependency {
-        mindustry on "v143.1"
-        arc on "v143.1"
+        mindustry mirror "144.3"
+        arc on "v145.1"
     }
     meta.version = if (hasProperty("modVer")) property("modVer") as String else "build-${LocalTime.now()}"
     server {
-        mindustry official "v143.1"
+        mindustry official "v145.1"
     }
     deploy {
         baseName = project.name
