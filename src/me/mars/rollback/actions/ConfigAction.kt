@@ -1,6 +1,8 @@
 package me.mars.rollback.actions
 
+import arc.util.Log
 import arc.util.Ratekeeper
+import me.mars.rollback.RollbackPlugin
 import me.mars.rollback.before
 import mindustry.Vars
 import mindustry.game.Team
@@ -33,6 +35,7 @@ class ConfigAction(uuid: String, pos: Int, blockSize: Int, team: Team, val confi
 
         val prev: ConfigAction? = this.tileInfo.select(-1,
             ConfigAction::class.java) {it.pos == this.pos && it.id < this.id && it.id > lowerBound}
+        if (RollbackPlugin.debug) Log.info("Undoing $this to $prev")
         if (prev != null) {
             return { Call.tileConfig(fakePlayer, Vars.world.build(this.pos), prev.config) }
         }
