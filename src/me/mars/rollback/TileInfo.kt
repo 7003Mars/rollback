@@ -58,7 +58,7 @@ class TileInfo {
         seq.filter { check.get(it) && it.javaClass == cls }
         if (seq.isEmpty) return null
         if (seq.size == 1) return seq.first() as T
-        val i: Int = if (index < 0) seq.size - index+1 else index+1
+        val i: Int = if (index < 0) seq.size + index+1 else index+1
         return sel.select(seq.toArray(cls), Comparator.comparingInt(Action::id), i, seq.size)
     }
 
