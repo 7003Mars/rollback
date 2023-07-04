@@ -7,7 +7,6 @@ import me.mars.rollback.actions.Action
 import me.mars.rollback.actions.BuildAction
 import me.mars.rollback.actions.ConfigAction
 import me.mars.rollback.actions.DeleteAction
-import java.util.Comparator
 
 class TileInfo {
     companion object {

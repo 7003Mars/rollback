@@ -1,6 +1,8 @@
 package me.mars.rollback
 
+import arc.Events
 import arc.func.Boolf
+import arc.func.Cons
 import arc.struct.Seq
 import me.mars.rollback.actions.Action
 import mindustry.gen.Unit
@@ -29,4 +31,8 @@ fun <T> Seq<T>.popAll(check: Boolf<T>): Seq<T> {
 
 fun Unit.uuidOrEmpty(): String {
     return this.player?.uuid()?: ""
+}
+
+inline fun <reified T> onEvent(cons: Cons<T>) {
+    Events.on(T::class.java, cons)
 }
