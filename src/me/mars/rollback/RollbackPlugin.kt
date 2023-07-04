@@ -1,6 +1,9 @@
 package me.mars.rollback
+import arc.Events
 import arc.util.*
 import mindustry.Vars
+import mindustry.game.EventType.GameOverEvent
+import mindustry.game.Team
 import mindustry.gen.Groups
 import mindustry.gen.Player
 import mindustry.mod.Plugin
@@ -17,6 +20,7 @@ class RollbackPlugin : Plugin() {
         Log.info("Rollback running version ${Vars.mods.getMod(internalName).meta.version}")
         if (debug) Log.info("Debug mode is enabled, expect more logs")
         addListeners()
+        addRaw()
     }
 
     override fun registerClientCommands(handler: CommandHandler) {
@@ -31,6 +35,19 @@ class RollbackPlugin : Plugin() {
 
         handler.register("fake", "fake") {
             tileStore.collectLatest { true }.each { it.uuid = "" }
+        }
+
+        handler.register("bg", "[name...]", "log graph to console") {
+            Log.info("\n"+map.buildGraph(if (it.isNotEmpty()) it[0] else "nameME"))
+            map.clear()
+        }
+        handler.register("c", "clear") {
+            map.clear()
+        }
+
+        handler.register("rtv", "rtv") {
+//            Vars.world.loadMap(Vars.maps.getNextMap(Gamemode.sandbox, null))
+            Events.fire(GameOverEvent(Team.crux))
         }
 
 //        Events.on(EventType.PlayerLeave::class.java) {
