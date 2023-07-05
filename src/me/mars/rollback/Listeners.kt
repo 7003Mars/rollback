@@ -15,6 +15,7 @@ import mindustry.Vars
 import mindustry.game.EventType.*
 import mindustry.gen.Building
 import mindustry.gen.Groups
+import mindustry.gen.Player
 import mindustry.gen.Unit
 import mindustry.world.Block
 import mindustry.world.Tile
@@ -82,6 +83,21 @@ fun addListeners() {
         eventStore.getOrPut(it.tile.pos()).add(UnitBuildE(it.tile, it.tile.build, it.unit))
     }
 
+    onEvent<PickupEvent> {
+        if (it.build == null) return@onEvent
+        eventStore.getOrPut(it.build.pos()).add(UnitRemoveE(it.build.tile, it.build, it.carrier))
+    }
+
+    onEvent<PayloadDropEvent> {
+        if (it.build == null) return@onEvent
+        eventStore.getOrPut(it.build.pos()).add(UnitBuildE(it.build.tile, it.build, it.carrier))
+    }
+
+    onEvent<ConfigEvent> {
+        eventStore.getOrPut(it.tile.pos()).add(ConfigE(it.tile.tile, it.value, it.player))
+    }
+
+
 //    Events.on()
 
 
@@ -108,8 +124,9 @@ val globalMatcher: Matcher<Event> = with(Matcher(Event::class.java)) {
         // TODO: Check if the build is not the same
         addMatcher(TileChangeE::class.java, { it.build != null && it.build !is ConstructBuild }) {
             success { it, events ->
+                val prev: TilePreChangeE = events[events.indexOf(it)-1] as TilePreChangeE
+                if (prev.build == it.build) return@success
                 Log.info("Success: Real -> Real")
-                val prev: TileChangeE = events[events.indexOf(it)] as TileChangeE
                 tileStore.setAction(DeleteAction("", prev.build!!.pos(), prev.build.block.size, prev.build.team))
                 tileStore.setAction(BuildAction("", it.build!!.pos(), it.build.block.size, it.build.team,
                     it.build.block, it.build.rotation.toByte()))
@@ -139,6 +156,14 @@ val globalMatcher: Matcher<Event> = with(Matcher(Event::class.java)) {
             Log.info("Success of $it")
 //            tileStore.taskQueue.add { Log.info("Tilelog: @", tileStore.get(it.build.pos()).actions) }
             tileStore.taskQueue.add { (tileStore.get(it.build.pos()).actions.peek() as DeleteAction).uuid = it.unit.player.uuid() }
+        }
+    }
+
+    addMatcher(ConfigE::class.java) {
+        success { it, _ ->
+            // TODO: Verify referenced block from tile / building is valid
+            tileStore.setAction(ConfigAction(it.player?.uuid()?: "", it.tile.pos(), it.tile.block().size,
+                it.player?.team() ?: it.tile.team(), it.value))
         }
     }
 
@@ -188,8 +213,7 @@ class UnitRemoveE(tile: Tile, val build: Building, val unit: Unit): Event(tile) 
     }
 }
 
-// TODO
-//class ConfigE(tile: Tile)
+class ConfigE(tile: Tile, val value: Any?, val player: Player?): Event(tile)
 
 open class Matcher<T : Event>(val matchClass: Class<T>, val check: Boolf<T>? = null) {
     val matchers: Seq<Matcher<*>> = Seq()
