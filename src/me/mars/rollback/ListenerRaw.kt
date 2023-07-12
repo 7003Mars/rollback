@@ -52,6 +52,10 @@ fun addRaw() {
         hadActivity = true
         map[it.tile.pos()].subSeq.add("Destroy#${i++}:\\n${it.tile.build}")
     }
+
+    Events.on(ConfigEvent::class.java) {
+        map[it.tile.pos()].subSeq.add("Config of ${it.value} to ${it.tile.config()}${i++}:\\n${it.tile}")
+    }
     // ppcpcpcc
     // ppcpcpcc
 }
