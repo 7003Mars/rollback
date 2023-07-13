@@ -36,7 +36,7 @@ dependencies {
 mindustry {
     projectType = ProjectType.Plugin
     dependency {
-        mindustry mirror "144.3"
+        mindustry on "145.1"
         arc on "v145.1"
     }
     meta.version = if (hasProperty("modVer")) property("modVer") as String else "build-${LocalTime.now()}"
