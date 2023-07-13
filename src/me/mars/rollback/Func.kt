@@ -2,9 +2,9 @@ package me.mars.rollback
 
 import arc.Events
 import arc.func.Boolf
-import arc.func.Cons
 import arc.struct.Seq
 import me.mars.rollback.actions.Action
+import me.mars.rollback.actions.Run
 import mindustry.gen.Unit
 
 inline fun <reified T> Seq<in T>.only(): Seq<T> {
@@ -33,6 +33,24 @@ fun Unit.uuidOrEmpty(): String {
     return this.player?.uuid()?: ""
 }
 
-inline fun <reified T> onEvent(cons: Cons<T>) {
-    Events.on(T::class.java, cons)
+/**
+ * Registers an event listener that can be suppressed by [suppressEvents]
+ */
+inline fun <reified T> onEvent(crossinline cons: (T) -> kotlin.Unit) {
+    Events.on(T::class.java) {
+        if (suppressEvents) return@on
+        cons(it)
+    }
+}
+
+fun withSuppress(runnable: Runnable): Run {
+    return {
+        suppressEvents = true
+        try {
+            runnable.run()
+        } finally {
+            suppressEvents = false
+        }
+    }
+
 }

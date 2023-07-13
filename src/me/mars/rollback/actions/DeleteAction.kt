@@ -5,6 +5,7 @@ import arc.util.Log
 import me.mars.rollback.RollbackPlugin
 import me.mars.rollback.before
 import me.mars.rollback.only
+import me.mars.rollback.withSuppress
 import mindustry.Vars.world
 import mindustry.game.Team
 import mindustry.gen.Call
@@ -32,14 +33,14 @@ class DeleteAction(uuid: String, pos: Int, blockSize: Int, team: Team) : Action(
         if (latestBuild.block is CoreBlock) {
             // Since core undos run first, the current building *should* be a core
             val items: ItemModule? = world.build(this.pos)?.takeIf { it is CoreBuild }?.items?.copy()
-            return {
+            return withSuppress {
                 world.tile(this.pos).setNet(latestBuild.block, this.team, latestBuild.rotation.toInt())
                 if (items != null) world.build(this.pos).items.set(items)
             }
         }
-        return {
+        return withSuppress {
             world.tile(this.pos).setNet(latestBuild.block, this.team, latestBuild.rotation.toInt())
-            if (latestConfig != null) Call.tileConfig(ConfigAction.fakePlayer, world.build(this.pos), latestConfig.config)
+            if (latestConfig != null) Call.tileConfig(null, world.build(this.pos), latestConfig.config)
         }
     }
     fun undoToCore(): Boolean {

@@ -3,6 +3,7 @@ package me.mars.rollback.actions
 import arc.util.Log
 import me.mars.rollback.RollbackPlugin
 import me.mars.rollback.before
+import me.mars.rollback.withSuppress
 import mindustry.Vars.world
 import mindustry.content.Blocks
 import mindustry.game.Team
@@ -20,7 +21,7 @@ class BuildAction(uuid: String, pos: Int, blockSize: Int, team: Team, val block:
     override fun undo(): Run? {
         if (this.block is CoreBlock) return null
         if (RollbackPlugin.debug) Log.info("Undo $this to air")
-        return { world.tile(this.pos).setNet(Blocks.air) }
+        return withSuppress { world.tile(this.pos).setNet(Blocks.air) }
     }
 
     override fun toString(): String {

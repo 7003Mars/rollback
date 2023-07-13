@@ -1,25 +1,14 @@
 package me.mars.rollback.actions
 
 import arc.util.Log
-import arc.util.Ratekeeper
 import me.mars.rollback.RollbackPlugin
 import me.mars.rollback.before
+import me.mars.rollback.withSuppress
 import mindustry.Vars
 import mindustry.game.Team
 import mindustry.gen.Call
-import mindustry.gen.Player
 
 class ConfigAction(uuid: String, pos: Int, blockSize: Int, team: Team, val config: Any?) : Action(uuid, pos, blockSize, team){
-    companion object {
-        val fakePlayer: Player = Player.create().also {
-            it.info.rate = object : Ratekeeper() {
-                override fun allow(spacing: Long, cap: Int): Boolean {
-                    return true
-                }
-            }
-            it.admin = true
-        }
-    }
 
     override fun preUndo() {
         // I intend to configure a block, however it is useless if:
@@ -37,9 +26,8 @@ class ConfigAction(uuid: String, pos: Int, blockSize: Int, team: Team, val confi
             ConfigAction::class.java) {it.pos == this.pos && it.id < this.id && it.id > lowerBound}
         if (RollbackPlugin.debug) Log.info("Undoing $this to $prev")
         if (prev != null) {
-            return { Call.tileConfig(fakePlayer, Vars.world.build(this.pos), prev.config) }
+            return withSuppress { Call.tileConfig(null, Vars.world.build(this.pos), prev.config) }
         }
         return null
-        // TODO: This thing triggers the Config event, use tileConfig__forward (non-public method)
     }
 }

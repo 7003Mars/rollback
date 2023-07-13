@@ -4,8 +4,10 @@ import arc.func.Boolf
 import arc.struct.OrderedMap
 import arc.struct.Seq
 import arc.util.Log
+import arc.util.Time
 import me.mars.rollback.RollbackPlugin.Companion.debug
 import me.mars.rollback.RollbackPlugin.Companion.tileStore
+import me.mars.rollback.actions.Action
 import me.mars.rollback.actions.BuildAction
 import me.mars.rollback.actions.ConfigAction
 import me.mars.rollback.actions.DeleteAction
@@ -24,14 +26,32 @@ import mindustry.world.blocks.logic.LogicBlock.LogicBuild
 
 typealias Events = Seq<Event>
 private val eventStore: OrderedMap<Int, Events> = OrderedMap()
+var suppressEvents: Boolean = false
 
 private fun add(pos: Int, event: Event) {
-    if (!eventStore.containsKey(pos)) eventStore.put(pos, Seq())
-    eventStore.get(pos).add(event)
+    eventStore.get(pos) { Seq() }.add(event)
+}
+
+private var tickStartTime: Long = Time.millis()
+private fun Action.claim(uuid: String, expectType: Class<out Action>) {
+    if (this.javaClass != expectType) {
+        Log.err("$expectType expected, got ${this.javaClass}")
+        return
+    }
+    if (this.uuid.isNotEmpty()) {
+        Log.err("$this already has uuid, can't be claimed")
+        return
+    }
+    if (this.time < tickStartTime) {
+        Log.err("$this created before time of current tick, $tickStartTime")
+    }
+    this.uuid = uuid
 }
 
 fun addListeners() {
     arc.Events.run(Trigger.update) {
+        tickStartTime = Time.millis()
+        if (eventStore.isEmpty) return@run
         for (entry in eventStore.entries()) {
             val events: Events = entry.value
             if (events.isEmpty) continue
@@ -43,7 +63,12 @@ fun addListeners() {
         }
     }
 
-    onEvent<WorldLoadEvent> {
+    arc.Events.run(WorldLoadBeginEvent::class.java) {
+        suppressEvents = true
+    }
+
+    arc.Events.on(WorldLoadEvent::class.java) {
+        suppressEvents = false
         tileStore.width = Vars.world.width()
         tileStore.height = Vars.world.height()
         tileStore.resized()
@@ -100,7 +125,9 @@ fun addListeners() {
         add(it.build.pos(), UnitBuildE(it.build.tile, it.build, it.carrier))
     }
 
-    onEvent<ConfigEvent> {
+    arc.Events.on(ConfigEvent::class.java) {
+        // TODO: The ConfigEvent is actually fired 1 tick later, so it should be suppressed another way
+        // Why anuke why
         val build: Building = it.tile
         add(it.tile.pos(), ConfigE(build.tile, build, it.value, it.player))
     }
@@ -131,7 +158,8 @@ val globalMatcher: Matcher<Event> = with(Matcher(Event::class.java)) {
                 tileStore.setAction(DeleteAction("", it.tile.pos(), prev.build!!.block.size, prev.build.team))
             }
         }
-        //  TilePreSet (Any real build) -> TileSet (Different build that is real) = Building gon + New building
+        // TilePreSet (Any real build) -> TileSet (Different build that is real) = Building gon + New building
+        // This should never be triggered by player actions
         // TODO: Check if the build is not the same
         addMatcher(TileChangeE::class.java, { it.build != null && it.build !is ConstructBuild }) {
             success { it, events ->
@@ -161,7 +189,9 @@ val globalMatcher: Matcher<Event> = with(Matcher(Event::class.java)) {
     addMatcher(UnitBuildE::class.java, { it.unit.player != null }) {
         success { it, _ ->
             val uuid: String = it.unit.player.uuid()
-            tileStore.taskQueue.add { (tileStore.get(it.build.pos()).actions.peek() as BuildAction).uuid = uuid }
+            tileStore.taskQueue.add {
+                tileStore.get(it.build.pos()).actions.peek().claim(uuid, BuildAction::class.java)
+            }
             if (it.build.block.configurable) tileStore.setAction(ConfigAction(uuid, it.build.pos(),
                 it.build.block.size, it.unit.team, it.build.config()))
         }
@@ -170,7 +200,9 @@ val globalMatcher: Matcher<Event> = with(Matcher(Event::class.java)) {
     addMatcher(UnitRemoveE::class.java, { it.unit.player != null }) {
         success { it, _->
 //            tileStore.taskQueue.add { Log.info("Tilelog: @", tileStore.get(it.build.pos()).actions) }
-            tileStore.taskQueue.add { (tileStore.get(it.build.pos()).actions.peek() as DeleteAction).uuid = it.unit.player.uuid() }
+            tileStore.taskQueue.add {
+                tileStore.get(it.build.pos()).actions.peek().claim(it.unit.player.uuid(), DeleteAction::class.java)
+            }
         }
     }
 
