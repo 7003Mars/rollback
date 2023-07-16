@@ -196,9 +196,11 @@ val globalMatcher: Matcher<Event> = with(Matcher(Event::class.java)) {
 
     addMatcher(UnitRemoveE::class.java, { it.unit.player != null }) {
         success { it, _->
+            val player: Player = it.unit.player
 //            tileStore.taskQueue.add { Log.info("Tilelog: @", tileStore.get(it.build.pos()).actions) }
             tileStore.taskQueue.add {
-                tileStore.get(it.build.pos()).actions.peek().claim(it.unit.player.uuid(), DeleteAction::class.java)
+                // TODO: Somehow the player is null. Perhaps it could be gone after waiting 1 tick in the queue
+                tileStore.get(it.build.pos()).actions.peek().claim(player.uuid(), DeleteAction::class.java)
             }
         }
     }
