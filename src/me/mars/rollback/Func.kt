@@ -1,10 +1,14 @@
 package me.mars.rollback
 
+import arc.Core
 import arc.Events
 import arc.func.Boolf
 import arc.struct.Seq
 import me.mars.rollback.actions.Action
 import me.mars.rollback.actions.Run
+import mindustry.gen.Building
+import mindustry.gen.Call
+import mindustry.gen.Player
 import mindustry.gen.Unit
 
 inline fun <reified T> Seq<in T>.only(): Seq<T> {
@@ -52,5 +56,10 @@ fun withSuppress(runnable: Runnable): Run {
             suppressEvents = false
         }
     }
+}
 
+fun safeConfig(player: Player?, building: Building, value: Any?) {
+    Core.app.post { suppressEvents = true }
+    Call.tileConfig(player, building, value)
+    Core.app.post { suppressEvents = false }
 }

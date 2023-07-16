@@ -125,9 +125,7 @@ fun addListeners() {
         add(it.build.pos(), UnitBuildE(it.build.tile, it.build, it.carrier))
     }
 
-    arc.Events.on(ConfigEvent::class.java) {
-        // TODO: The ConfigEvent is actually fired 1 tick later, so it should be suppressed another way
-        // Why anuke why
+    onEvent<ConfigEvent> {
         val build: Building = it.tile
         add(it.tile.pos(), ConfigE(build.tile, build, it.value, it.player))
     }
@@ -160,7 +158,6 @@ val globalMatcher: Matcher<Event> = with(Matcher(Event::class.java)) {
         }
         // TilePreSet (Any real build) -> TileSet (Different build that is real) = Building gon + New building
         // This should never be triggered by player actions
-        // TODO: Check if the build is not the same
         addMatcher(TileChangeE::class.java, { it.build != null && it.build !is ConstructBuild }) {
             success { it, events ->
                 // If nothing actually changed, do nothing

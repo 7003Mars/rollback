@@ -2,13 +2,9 @@ package me.mars.rollback.actions
 
 import arc.struct.Seq
 import arc.util.Log
-import me.mars.rollback.RollbackPlugin
-import me.mars.rollback.before
-import me.mars.rollback.only
-import me.mars.rollback.withSuppress
+import me.mars.rollback.*
 import mindustry.Vars.world
 import mindustry.game.Team
-import mindustry.gen.Call
 import mindustry.world.blocks.storage.CoreBlock
 import mindustry.world.blocks.storage.CoreBlock.CoreBuild
 import mindustry.world.modules.ItemModule
@@ -40,7 +36,7 @@ class DeleteAction(uuid: String, pos: Int, blockSize: Int, team: Team) : Action(
         }
         return withSuppress {
             world.tile(this.pos).setNet(latestBuild.block, this.team, latestBuild.rotation.toInt())
-            if (latestConfig != null) Call.tileConfig(null, world.build(this.pos), latestConfig.config)
+            if (latestConfig != null) safeConfig(null, world.build(this.pos), latestConfig.config)
         }
     }
     fun undoToCore(): Boolean {

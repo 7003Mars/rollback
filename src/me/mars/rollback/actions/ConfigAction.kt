@@ -3,10 +3,10 @@ package me.mars.rollback.actions
 import arc.util.Log
 import me.mars.rollback.RollbackPlugin
 import me.mars.rollback.before
+import me.mars.rollback.safeConfig
 import me.mars.rollback.withSuppress
 import mindustry.Vars
 import mindustry.game.Team
-import mindustry.gen.Call
 
 class ConfigAction(uuid: String, pos: Int, blockSize: Int, team: Team, val config: Any?) : Action(uuid, pos, blockSize, team){
 
@@ -26,7 +26,7 @@ class ConfigAction(uuid: String, pos: Int, blockSize: Int, team: Team, val confi
             ConfigAction::class.java) {it.pos == this.pos && it.id < this.id && it.id > lowerBound}
         if (RollbackPlugin.debug) Log.info("Undoing $this to $prev")
         if (prev != null) {
-            return withSuppress { Call.tileConfig(null, Vars.world.build(this.pos), prev.config) }
+            return withSuppress { safeConfig(null, Vars.world.build(this.pos), prev.config) }
         }
         return null
     }
