@@ -1,13 +1,13 @@
 package me.mars.rollback
 
 import arc.func.Boolf
+import arc.math.geom.Point2
+import arc.struct.ObjectMap
 import arc.struct.OrderedMap
 import arc.struct.Seq
 import arc.util.Log
 import arc.util.Time
-import me.mars.rollback.RollbackPlugin.Companion.debug
 import me.mars.rollback.RollbackPlugin.Companion.tileStore
-import me.mars.rollback.actions.Action
 import me.mars.rollback.actions.BuildAction
 import me.mars.rollback.actions.ConfigAction
 import me.mars.rollback.actions.DeleteAction
@@ -25,42 +25,36 @@ import mindustry.world.blocks.ConstructBlock.ConstructBuild
 import mindustry.world.blocks.logic.LogicBlock.LogicBuild
 
 typealias Events = Seq<Event>
-private val eventStore: OrderedMap<Int, Events> = OrderedMap()
+
+/**
+ * All these are cleared every tick
+ */
+private val eventStore: ObjectMap<Int, Events> = ObjectMap()
+private val allEvents: Events = Seq()
+private val tilePreSets: OrderedMap<Int, TilePreChange> = OrderedMap()
 var suppressEvents: Boolean = false
 
 private fun add(pos: Int, event: Event) {
     eventStore.get(pos) { Seq() }.add(event)
+    allEvents.add(event)
 }
 
 private var tickStartTime: Long = Time.millis()
-private fun Action.claim(uuid: String, expectType: Class<out Action>) {
-    if (this.javaClass != expectType) {
-        Log.err("$expectType expected, got ${this.javaClass}")
-        return
-    }
-    if (this.uuid.isNotEmpty()) {
-        Log.err("$this already has uuid, can't be claimed")
-        return
-    }
-    if (this.time < tickStartTime) {
-        Log.err("$this created before time of current tick, $tickStartTime")
-    }
-    this.uuid = uuid
-}
 
 fun addListeners() {
     arc.Events.run(Trigger.update) {
         tickStartTime = Time.millis()
+//        allEvents.each { globalMatcher.match()}
+         for (event: Event in allEvents) {
+             Log.info("\nNew match started for $event")
+             globalMatcher.match(event, eventStore.get(event.tile.pos()))
+        }
         if (eventStore.isEmpty) return@run
         for (entry in eventStore.entries()) {
             val events: Events = entry.value
-            if (events.isEmpty) continue
-//            Log.info("Matching for ${Point2.unpack(entry.key)}: $events")
-            repeat(events.size) {i ->
-                globalMatcher.match(events, i)
-            }
             events.clear()
         }
+        allEvents.clear()
     }
 
     arc.Events.run(WorldLoadBeginEvent::class.java) {
@@ -82,18 +76,34 @@ fun addListeners() {
         }
     }
 
-    onEvent<TileChangeEvent> {
-        add(it.tile.pos(), TileChangeE(it.tile, it.tile.build))
-        if (it.tile.build == null || it.tile.build.tile != it.tile) return@onEvent
-        if (it.tile.build is LogicBuild) {
-            val build: LogicBuild = it.tile.build as LogicBuild
-            if (build.executor is ModifiedExecutor) return@onEvent
-            build.executor = ModifiedExecutor()
-        }
+    onEvent<TilePreChangeEvent> {
+        tilePreSets.put(it.tile.pos(), TilePreChange(it.tile, it.tile.build))
     }
 
-    onEvent<TilePreChangeEvent> {
-        add(it.tile.pos(), TilePreChangeE(it.tile, it.tile.build))
+    onEvent<TileChangeEvent> {
+        val prev: TilePreChange = tilePreSets.get(it.tile.pos())!!
+        val prevBuild: Building? = prev.build?.takeIf { b -> b.pos() ==  it.tile.pos()}
+        val curBuild: Building? = it.tile.build?.takeIf { b -> b.pos() == it.tile.pos() }
+
+        if (prevBuild != null && prevBuild !is ConstructBuild && (curBuild == null || curBuild is ConstructBuild)) {
+            // Building gon
+            add(prevBuild.pos(), RemoveE(prevBuild.tile, prevBuild))
+        }
+        if ((prevBuild == null || prevBuild is ConstructBuild) && curBuild != null && curBuild !is ConstructBuild) {
+            add(curBuild.pos(), BuildE(curBuild.tile, curBuild))
+            Log.info("built")
+            // Building built
+        }
+        if (prevBuild != null && prevBuild !is ConstructBuild && curBuild != null && curBuild !is ConstructBuild) {
+            Log.info("both")
+            add(prevBuild.pos(), RemoveE(prevBuild.tile, prevBuild))
+            add(curBuild.pos(), BuildE(curBuild.tile, curBuild))
+        }
+        tilePreSets.remove(it.tile.pos())
+
+        if (curBuild is LogicBuild) {
+            if (curBuild.executor !is ModifiedExecutor) curBuild.executor = ModifiedExecutor()
+        }
     }
 
     onEvent<BlockBuildBeginEvent> {
@@ -130,12 +140,9 @@ fun addListeners() {
         add(it.tile.pos(), ConfigE(build.tile, build, it.value, it.player))
     }
 
-//    onEvent<CoreChangeEvent> {
-//        add(it.t)
-//    }
-
-
-//    Events.on()
+    onEvent<BlockDestroyEvent> {
+        add(it.tile.pos(), DestroyE(it.tile, it.tile.build))
+    }
 
 
 }
@@ -146,66 +153,53 @@ fun addListeners() {
 
 
 val globalMatcher: Matcher<Event> = with(Matcher(Event::class.java)) {
-    increment = false
-    addMatcher(TilePreChangeE::class.java, { it.build != null && it.build.tile == it.tile && it.build !is ConstructBuild} ) {
-        //  TilePreSet (Any real build) -> TileSet (ConstructBuild or none) = Building gon
-        addMatcher(TileChangeE::class.java, { it.build is ConstructBuild || it.build == null}) {
-            success { it, events ->
-                val prev: TilePreChangeE = events[events.indexOf(it)-1] as TilePreChangeE
-//                Log.info("Success: ${prev.build} -> None")
-                tileStore.setAction(DeleteAction("", it.tile.pos(), prev.build!!.block.size, prev.build.team))
-            }
-        }
-        // TilePreSet (Any real build) -> TileSet (Different build that is real) = Building gon + New building
-        // This should never be triggered by player actions
-        addMatcher(TileChangeE::class.java, { it.build != null && it.build !is ConstructBuild }) {
-            success { it, events ->
-                // If nothing actually changed, do nothing
-                val prev: TilePreChangeE = events[events.indexOf(it)-1] as TilePreChangeE
-                if (prev.build == it.build) return@success
-//                Log.info("Success: Real -> Real")
-                tileStore.setAction(DeleteAction("", prev.build!!.pos(), prev.build.block.size, prev.build.team))
-                val b: Building = it.build!!
-                tileStore.setAction(BuildAction("", b.pos(), b.block.size, b.team,
-                    b.block, b.rotation.toByte()))
-            }
-        }
-    }
-    // TODO: Should ignore event if its build pos isnt this tile pos?
-    //  TilePreSet (ConstructBuild or none) -> TileSet (Real build) = New building
-    addMatcher(TilePreChangeE::class.java, { it.build is ConstructBuild || it.build == null }) {
-        addMatcher(TileChangeE::class.java, { it.build != null && it.build !is ConstructBuild }) {
-            success { it, _ ->
-//                Log.info("Success: None -> Real")
-                tileStore.setAction(BuildAction("", it.build!!.pos(), it.build.block.size, it.build.team,
-                    it.build.block(), it.build.rotation.toByte()))
+    addMatcher(DestroyE::class.java) {
+        desc = "Match destroy"
+        addMatcher(RemoveE::class.java) {
+            desc = "Match destroy -> remove"
+            success { removeE: RemoveE, _: Events ->
+                val build: Building = removeE.build
+                tileStore.setAction(DeleteAction("destroy", build.pos(), build.block.size, build.team))
             }
         }
     }
 
-    addMatcher(UnitBuildE::class.java, { it.unit.player != null }) {
-        success { it, _ ->
-            val uuid: String = it.unit.player.uuid()
-            tileStore.taskQueue.add {
-                tileStore.get(it.build.pos()).actions.peek().claim(uuid, BuildAction::class.java)
+    addMatcher(RemoveE::class.java) {
+        optional = true
+        desc = "Match remove"
+        addMatcher(UnitRemoveE::class.java) {
+            desc = "Match remove -> unit remove"
+            success { unitRemoveE: UnitRemoveE, _: Events ->
+                val build: Building = unitRemoveE.build
+                val unit: Unit = unitRemoveE.unit
+                tileStore.setAction(DeleteAction(unit.uuidOrEmpty(), build.pos(), build.block.size, unit.team))
             }
-            if (it.build.block.configurable) tileStore.setAction(ConfigAction(uuid, it.build.pos(),
-                it.build.block.size, it.unit.team, it.build.config()))
+        }
+        success { removeE: RemoveE, events: Events ->
+            val build: Building = removeE.build
+            tileStore.setAction(DeleteAction("", build.pos(), build.block.size, build.team))
         }
     }
 
-    addMatcher(UnitRemoveE::class.java, { it.unit.player != null }) {
-        success { it, _->
-            val player: Player = it.unit.player
-//            tileStore.taskQueue.add { Log.info("Tilelog: @", tileStore.get(it.build.pos()).actions) }
-            tileStore.taskQueue.add {
-                // TODO: Somehow the player is null. Perhaps it could be gone after waiting 1 tick in the queue
-                tileStore.get(it.build.pos()).actions.peek().claim(player.uuid(), DeleteAction::class.java)
+    addMatcher(BuildE::class.java) {
+        desc = "Match build"
+        optional = true
+        addMatcher(UnitBuildE::class.java) {
+            desc = "Match build -> unit build"
+            success { unitBuildE: UnitBuildE, _: Events ->
+                val build: Building = unitBuildE.build
+                val unit: Unit = unitBuildE.unit
+                tileStore.setAction(BuildAction(unit.uuidOrEmpty(), build.pos(), build.block.size, unit.team, build.block, build.rotation.toByte()))
             }
+        }
+        success { buildE: BuildE, events: Events ->
+            val build: Building = buildE.build
+            tileStore.setAction(BuildAction("", build.pos(), build.block.size, build.team, build.block, build.rotation.toByte()))
         }
     }
 
     addMatcher(ConfigE::class.java) {
+        desc = "Match config"
         success { it, _ ->
             // TODO: Verify referenced block from tile / building is valid
             val uuid: String = it.player?.uuid() ?: ""
@@ -217,24 +211,115 @@ val globalMatcher: Matcher<Event> = with(Matcher(Event::class.java)) {
     return@with this
 }
 
+class Matcher<T>(val matchClass: Class<T>, val check: Boolf<T>? = null) {
+    var desc: String = "Global matcher"
+    var increment: Int = 1
+    val matchers: Seq<Matcher<*>> = Seq()
+    var optional: Boolean = false
+    var onSuccess: (T, Seq<Event>) -> kotlin.Unit = { it, _ ->
+        Log.warn("Match success: $it. No further action done")
+    }
+
+    fun <R : Event>addMatcher(cls: Class<R>, check: Boolf<R>? = null, block: Matcher<R>.() -> kotlin.Unit) {
+        val matcher = Matcher(cls, check)
+        this.matchers.add(matcher)
+        matcher.block()
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun matches(event: Event): Boolean {
+        if (event.javaClass != this.matchClass) return false
+        return this.check?.get(event as T) ?: true
+    }
+
+    fun success(cons: (T, Events) -> kotlin.Unit) {
+        this.onSuccess = cons
+    }
+
+    fun match(cur: Event, events: Events) {
+        this.match(cur, events, Int.MIN_VALUE)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun match(cur: Event?, events: Events, index: Int): Boolean {
+        // If there is nothing left, we have reached an endpoint
+        if (this.matchers.isEmpty || (cur == null && this.optional)) {
+            Log.info("$this has no more matchers or cur is null")
+            this.onSuccess(events.get(index-1) as T, events)
+            return true
+        }
+
+        if (cur == null) {
+            Log.err("$this Skipped null event")
+            return false
+        }
+        Log.info("Cur: $cur\n$events")
+        var success = false
+        var nextIndex: Int = -1
+        var next: Event? = null
+        for (matcher in this.matchers) {
+            Log.info("Match against $matcher")
+            if (!matcher.matches(cur)) continue
+            if (next == null) {
+                nextIndex = (if (index >= 0) index else events.indexOf(cur)) + this.increment
+                // However, if there is nothing left, we failed
+                next = if (nextIndex < events.size) events.get(nextIndex) else null
+            }
+            if (matcher.match(next, events, nextIndex)) {
+                success = true
+                break
+            }
+        }
+        if (!success && this.optional) {
+            val prevIndex: Int = if (index >= 0) index-1 else events.indexOf(cur)-1
+            this.onSuccess(events.get(prevIndex) as T, events)
+            Log.info("optional from failure, prev was ")
+
+            return true
+        }
+        return success
+    }
+
+    override fun toString(): String {
+        return "\'${this.desc}\'"
+    }
+}
+
+class ModifiedExecutor : LExecutor() {
+    override fun runOnce() {
+        var index: Int = this.counter.numval.toInt()
+        if (index >= this.instructions.size || index < 0) index = 0
+        val instr: LInstruction = this.instructions[index]
+        if (instr is ControlI && instr.type == LAccess.config) {
+            val build: Building = this.obj(instr.target).takeIf { it is Building } as Building? ?: return
+            if (!(this.privileged || (build.team == this.team && this.linkIds.contains(build.id)))) return
+            if (!this.`var`(instr.p1).isobj) return
+            val value: Any? = this.obj(instr.p1)
+            tileStore.setAction(ConfigAction("", build.pos(), build.block.size, this.team, value))
+        }
+        super.runOnce()
+    }
+}
+
 abstract class Event(val tile: Tile) {
     override fun toString(): String {
         return "@[$tile]"
     }
 }
 
-class TilePreChangeE(tile: Tile, val build: Building?): Event(tile) {
+class TilePreChange(val tile: Tile, val build: Building?)
+
+class RemoveE(tile: Tile, val build: Building): Event(tile) {
     override fun toString(): String {
-        return "TilePreChangeE(build=$build)" + super.toString()
+        return "RemoveE(${Point2.unpack(this.tile.pos())}, build=$build)" + super.toString()
+    }
+}
+class BuildE(tile: Tile, val build: Building): Event(tile) {
+    override fun toString(): String {
+        return "BuildE(${Point2.unpack(this.tile.pos())}, build=$build)" + super.toString()
     }
 }
 
-class TileChangeE(tile: Tile, val build: Building?): Event(tile) {
-    override fun toString(): String {
-        return "TileChangeE(build=$build)" + super.toString()
-    }
-
-}
 
 /**
  * Used for the following: End of unit building, units dropping builds
@@ -259,62 +344,7 @@ class UnitRemoveE(tile: Tile, val build: Building, val unit: Unit): Event(tile) 
  */
 class ConfigE(tile: Tile, val build: Building, val value: Any?, val player: Player?): Event(tile)
 
-class Matcher<T : Event>(val matchClass: Class<T>, val check: Boolf<T>? = null) {
-    val matchers: Seq<Matcher<*>> = Seq()
-    var onSuccess: (T, Seq<Event>) -> kotlin.Unit = { it, _ ->
-        Log.warn("Match success: $it. No further action done")
-    }
-    var increment: Boolean = true
-
-    fun <R : Event>addMatcher(cls: Class<R>, check: Boolf<R>? = null, block: Matcher<R>.() -> kotlin.Unit) {
-        val matcher = Matcher(cls, check)
-        this.matchers.add(matcher)
-        matcher.block()
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    private fun matches(event: Event): Boolean {
-        if (event.javaClass != this.matchClass) return false
-        return this.check?.get(event as T) ?: true
-    }
-
-    fun success(cons: (T, Events) -> kotlin.Unit) {
-        this.onSuccess = cons
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    fun match(events: Events, index: Int): Boolean {
-        if (this.matchers.isEmpty) {
-            this.onSuccess(events.get(index) as T, events)
-            return true
-        }
-        val nextIndex: Int = index + if (this.increment) 1 else 0
-        val next: Event = if (index < events.size) events.get(nextIndex) else return false
-        var success = false
-        for (matcher in this.matchers) {
-            if (!matcher.matches(next)) continue
-            if (matcher.match(events, nextIndex)) {
-                if (success) Log.warn("Multiple matches found")
-                success = true
-                if (!debug) break
-            }
-        }
-        return success
-    }
-}
-
-class ModifiedExecutor : LExecutor() {
-    override fun runOnce() {
-        var index: Int = this.counter.numval.toInt()
-        if (index >= this.instructions.size || index < 0) index = 0
-        val instr: LInstruction = this.instructions[index]
-        if (instr is ControlI && instr.type == LAccess.config) {
-            val build: Building = this.obj(instr.target).takeIf { it is Building } as Building? ?: return
-            if (!(this.privileged || (build.team == this.team && this.linkIds.contains(build.id)))) return
-            if (!this.`var`(instr.p1).isobj) return
-            val value: Any? = this.obj(instr.p1)
-            tileStore.setAction(ConfigAction("", build.pos(), build.block.size, this.team, value))
-        }
-        super.runOnce()
-    }
-}
+/**
+ * A building was destroyed
+ */
+class DestroyE(tile: Tile, val build: Building): Event(tile)

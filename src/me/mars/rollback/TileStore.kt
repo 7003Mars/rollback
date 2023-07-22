@@ -148,7 +148,7 @@ class TileStore(var width: Int, var height: Int) {
 //                Log.info("filtered:\n@", actions)
                 // Rollback cores first to prevent game over
                 val coreUndo = actions.popAll { it is DeleteAction && it.undoToCore() }.`as`<DeleteAction>()
-                coreUndo.each(DeleteAction::undo)
+                coreUndo.each { it.undo()?.also { r -> Core.app.post(r) } }
                 for (i in actions.size-1 downTo  0) {
                     val runnable: Run? = actions.get(i).undo()
                     if (runnable != null) Core.app.post(runnable)
