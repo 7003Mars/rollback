@@ -142,7 +142,7 @@ fun addListeners() {
 class Executor : LExecutor() {
     override fun runOnce() {
         // TODO: Coded while half awake, please check through
-        var index: Int = (this.counter.numval+1).toInt()
+        var index: Int = this.counter.numval.toInt()
         if (index >= this.instructions.size || index < 0) index = 0
         val instr: LInstruction = this.instructions[index]
         // TOOD: Check for configs too
