@@ -59,6 +59,7 @@ fun withSuppress(runnable: Runnable): Run {
 }
 
 fun safeConfig(player: Player?, building: Building, value: Any?) {
+    if (building.config() == value) return
     Core.app.post { suppressEvents = true }
     Call.tileConfig(player, building, value)
     Core.app.post { suppressEvents = false }

@@ -20,7 +20,7 @@ class RollbackPlugin : Plugin() {
         Log.info("Rollback running version ${Vars.mods.getMod(internalName).meta.version}")
         if (debug) Log.info("Debug mode is enabled, expect more logs")
         addListeners()
-        addRaw()
+//        addRaw()
     }
 
     override fun registerClientCommands(handler: CommandHandler) {

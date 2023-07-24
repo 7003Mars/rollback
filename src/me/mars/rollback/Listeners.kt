@@ -7,6 +7,9 @@ import arc.struct.OrderedMap
 import arc.struct.Seq
 import arc.util.Log
 import arc.util.Time
+import arc.util.pooling.Pool
+import arc.util.pooling.Pool.Poolable
+import arc.util.pooling.Pools
 import me.mars.rollback.RollbackPlugin.Companion.tileStore
 import me.mars.rollback.actions.BuildAction
 import me.mars.rollback.actions.ConfigAction
@@ -32,6 +35,7 @@ typealias Events = Seq<Event>
 private val eventStore: ObjectMap<Int, Events> = ObjectMap()
 private val allEvents: Events = Seq()
 private val tilePreSets: OrderedMap<Int, TilePreChange> = OrderedMap()
+private val tilePool: Pool<TilePreChange> = Pools.get(TilePreChange::class.java, ::TilePreChange, 100)
 var suppressEvents: Boolean = false
 
 private fun add(pos: Int, event: Event) {
@@ -46,14 +50,10 @@ fun addListeners() {
         tickStartTime = Time.millis()
 //        allEvents.each { globalMatcher.match()}
          for (event: Event in allEvents) {
-             Log.info("\nNew match started for $event")
+//             Log.info("\nNew match started for $event")
              globalMatcher.match(event, eventStore.get(event.tile.pos()))
         }
-        if (eventStore.isEmpty) return@run
-        for (entry in eventStore.entries()) {
-            val events: Events = entry.value
-            events.clear()
-        }
+        eventStore.clear()
         allEvents.clear()
     }
 
@@ -77,7 +77,7 @@ fun addListeners() {
     }
 
     onEvent<TilePreChangeEvent> {
-        tilePreSets.put(it.tile.pos(), TilePreChange(it.tile, it.tile.build))
+        tilePreSets.put(it.tile.pos(), tilePool.obtain().set(it.tile.build))
     }
 
     onEvent<TileChangeEvent> {
@@ -91,15 +91,16 @@ fun addListeners() {
         }
         if ((prevBuild == null || prevBuild is ConstructBuild) && curBuild != null && curBuild !is ConstructBuild) {
             add(curBuild.pos(), BuildE(curBuild.tile, curBuild))
-            Log.info("built")
+//            Log.info("built")
             // Building built
         }
         if (prevBuild != null && prevBuild !is ConstructBuild && curBuild != null && curBuild !is ConstructBuild) {
-            Log.info("both")
+//            Log.info("both")
             add(prevBuild.pos(), RemoveE(prevBuild.tile, prevBuild))
             add(curBuild.pos(), BuildE(curBuild.tile, curBuild))
         }
         tilePreSets.remove(it.tile.pos())
+        tilePool.free(prev)
 
         if (curBuild is LogicBuild) {
             if (curBuild.executor !is ModifiedExecutor) curBuild.executor = ModifiedExecutor()
@@ -147,22 +148,18 @@ fun addListeners() {
 
 }
 
-//  TilePreSet (Any real build) -> TileSet (ConstructBuild or none) = Building gon
-//  TilePreSet (Any real build) -> TileSet (Different build that is real) = Building gon + New building
-//  TilePreSet (ConstructBuild or none) -> TileSet (Real build) = New building
-
 
 val globalMatcher: Matcher<Event> = with(Matcher(Event::class.java)) {
-    addMatcher(DestroyE::class.java) {
-        desc = "Match destroy"
-        addMatcher(RemoveE::class.java) {
-            desc = "Match destroy -> remove"
-            success { removeE: RemoveE, _: Events ->
-                val build: Building = removeE.build
-                tileStore.setAction(DeleteAction("destroy", build.pos(), build.block.size, build.team))
-            }
-        }
-    }
+//    addMatcher(DestroyE::class.java) {
+//        desc = "Match destroy"
+//        addMatcher(RemoveE::class.java) {
+//            desc = "Match destroy -> remove"
+//            success { removeE: RemoveE, _: Events ->
+//                val build: Building = removeE.build
+//                tileStore.setAction(DeleteAction("destroy", build.pos(), build.block.size, build.team))
+//            }
+//        }
+//    }
 
     addMatcher(RemoveE::class.java) {
         optional = true
@@ -175,7 +172,7 @@ val globalMatcher: Matcher<Event> = with(Matcher(Event::class.java)) {
                 tileStore.setAction(DeleteAction(unit.uuidOrEmpty(), build.pos(), build.block.size, unit.team))
             }
         }
-        success { removeE: RemoveE, events: Events ->
+        success { removeE: RemoveE, _: Events ->
             val build: Building = removeE.build
             tileStore.setAction(DeleteAction("", build.pos(), build.block.size, build.team))
         }
@@ -192,7 +189,7 @@ val globalMatcher: Matcher<Event> = with(Matcher(Event::class.java)) {
                 tileStore.setAction(BuildAction(unit.uuidOrEmpty(), build.pos(), build.block.size, unit.team, build.block, build.rotation.toByte()))
             }
         }
-        success { buildE: BuildE, events: Events ->
+        success { buildE: BuildE, _: Events ->
             val build: Building = buildE.build
             tileStore.setAction(BuildAction("", build.pos(), build.block.size, build.team, build.block, build.rotation.toByte()))
         }
@@ -212,8 +209,10 @@ val globalMatcher: Matcher<Event> = with(Matcher(Event::class.java)) {
 }
 
 class Matcher<T>(val matchClass: Class<T>, val check: Boolf<T>? = null) {
+    /**
+     * [desc] is used for debug only, null otherwise
+     */
     var desc: String = "Global matcher"
-    var increment: Int = 1
     val matchers: Seq<Matcher<*>> = Seq()
     var optional: Boolean = false
     var onSuccess: (T, Seq<Event>) -> kotlin.Unit = { it, _ ->
@@ -244,24 +243,23 @@ class Matcher<T>(val matchClass: Class<T>, val check: Boolf<T>? = null) {
     private fun match(cur: Event?, events: Events, index: Int): Boolean {
         // If there is nothing left, we have reached an endpoint
         if (this.matchers.isEmpty || (cur == null && this.optional)) {
-            Log.info("$this has no more matchers or cur is null")
+//            Log.info("$this has no more matchers or cur is null")
             this.onSuccess(events.get(index-1) as T, events)
             return true
         }
-
         if (cur == null) {
             Log.err("$this Skipped null event")
             return false
         }
-        Log.info("Cur: $cur\n$events")
+//        Log.info("Cur: $cur\n$events")
         var success = false
         var nextIndex: Int = -1
         var next: Event? = null
         for (matcher in this.matchers) {
-            Log.info("Match against $matcher")
+//            Log.info("Match against $matcher")
             if (!matcher.matches(cur)) continue
             if (next == null) {
-                nextIndex = (if (index >= 0) index else events.indexOf(cur)) + this.increment
+                nextIndex = (if (index >= 0) index else events.indexOf(cur)) + 1
                 // However, if there is nothing left, we failed
                 next = if (nextIndex < events.size) events.get(nextIndex) else null
             }
@@ -272,16 +270,15 @@ class Matcher<T>(val matchClass: Class<T>, val check: Boolf<T>? = null) {
         }
         if (!success && this.optional) {
             val prevIndex: Int = if (index >= 0) index-1 else events.indexOf(cur)-1
+//            Log.info("optional from failure, prev was ${events.get(prevIndex)}")
             this.onSuccess(events.get(prevIndex) as T, events)
-            Log.info("optional from failure, prev was ")
-
             return true
         }
         return success
     }
 
     override fun toString(): String {
-        return "\'${this.desc}\'"
+        return if (RollbackPlugin.debug) "\"${this.desc}\"" else super.toString()
     }
 }
 
@@ -301,13 +298,24 @@ class ModifiedExecutor : LExecutor() {
     }
 }
 
+class TilePreChange: Poolable {
+    var build: Building? = null
+
+    fun set(build: Building?): TilePreChange {
+        this.build = build
+        return this
+    }
+
+    override fun reset() {
+        this.build = null
+    }
+}
+
 abstract class Event(val tile: Tile) {
     override fun toString(): String {
         return "@[$tile]"
     }
 }
-
-class TilePreChange(val tile: Tile, val build: Building?)
 
 class RemoveE(tile: Tile, val build: Building): Event(tile) {
     override fun toString(): String {
@@ -342,9 +350,17 @@ class UnitRemoveE(tile: Tile, val build: Building, val unit: Unit): Event(tile) 
 /**
  * Used for the following: Buildings getting configured
  */
-class ConfigE(tile: Tile, val build: Building, val value: Any?, val player: Player?): Event(tile)
+class ConfigE(tile: Tile, val build: Building, val value: Any?, val player: Player?): Event(tile) {
+    override fun toString(): String {
+        return "ConfigE(build=$build, player=$player)" + super.toString()
+    }
+}
 
 /**
  * A building was destroyed
  */
-class DestroyE(tile: Tile, val build: Building): Event(tile)
+class DestroyE(tile: Tile, val build: Building): Event(tile) {
+    override fun toString(): String {
+        return "DestroyE(build=$build)" + super.toString()
+    }
+}

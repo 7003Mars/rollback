@@ -18,7 +18,7 @@ var i: Int = 0
 fun addRaw() {
 
     onEvent<TilePreChangeEvent> {
-        tilePreSets.put(it.tile.pos(), TilePreChange(it.tile, it.tile.build))
+        tilePreSets.put(it.tile.pos(), TilePreChange().set(it.tile.build))
     }
 
     onEvent<TileChangeEvent> {
