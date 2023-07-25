@@ -19,6 +19,11 @@ fun Seq<Action>.before(me: Action): Seq<Action> {
     return this.filter {it.id < me.id}
 }
 
+fun <T> Seq<T>.lastOpt(): T? {
+    if (this.size == 0) return null
+    return this.peek()
+}
+
 fun <T> Seq<T>.popAll(check: Boolf<T>): Seq<T> {
     // The following code hates mobile!
     val res: Seq<T> = Seq()

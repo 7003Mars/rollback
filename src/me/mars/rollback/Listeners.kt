@@ -69,9 +69,9 @@ fun addListeners() {
 
         Groups.build.each {
             val block: Block = it.block
-            tileStore.setAction(BuildAction("", it.pos(), block.size, it.team, block, it.rotation.toByte()))
+            tileStore.setAction(BuildAction("world", it.pos(), block.size, it.team, block, it.rotation.toByte()))
             if (block.configurable) {
-                tileStore.setAction(ConfigAction("", it.pos(), block.size, it.team, it.config()))
+                tileStore.setAction(ConfigAction("world", it.pos(), block.size, it.team, it.config()))
             }
         }
     }
@@ -174,7 +174,7 @@ val globalMatcher: Matcher<Event> = with(Matcher(Event::class.java)) {
         }
         success { removeE: RemoveE, _: Events ->
             val build: Building = removeE.build
-            tileStore.setAction(DeleteAction("", build.pos(), build.block.size, build.team))
+            tileStore.setAction(DeleteAction("world", build.pos(), build.block.size, build.team))
         }
     }
 
@@ -191,7 +191,7 @@ val globalMatcher: Matcher<Event> = with(Matcher(Event::class.java)) {
         }
         success { buildE: BuildE, _: Events ->
             val build: Building = buildE.build
-            tileStore.setAction(BuildAction("", build.pos(), build.block.size, build.team, build.block, build.rotation.toByte()))
+            tileStore.setAction(BuildAction("world", build.pos(), build.block.size, build.team, build.block, build.rotation.toByte()))
         }
     }
 

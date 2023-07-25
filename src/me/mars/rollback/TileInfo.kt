@@ -19,7 +19,7 @@ class TileInfo {
     val actions: Seq<Action> = Seq()
 
     fun add(action: Action) {
-        if (this.actions.any() && action.uuid != this.actions.first().uuid) {
+        if (this.actions.any() && (action.uuid != this.actions.first().uuid || action.uuid == "world")) {
             this.actions.each{
                 when (it) {
                     is BuildAction -> this.prevBuild = it
@@ -29,7 +29,11 @@ class TileInfo {
             }
             this.actions.clear()
         }
-        this.actions.add(action)
+        if (action is ConfigAction && this.actions.lastOpt() is ConfigAction) {
+            this.actions.set(this.actions.size-1, action)
+        } else {
+            this.actions.add(action)
+        }
     }
 
     /**
