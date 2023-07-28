@@ -59,6 +59,8 @@ fun addListeners() {
 
     arc.Events.run(WorldLoadBeginEvent::class.java) {
         suppressEvents = true
+        eventStore.clear()
+        allEvents.clear()
     }
 
     arc.Events.on(WorldLoadEvent::class.java) {
