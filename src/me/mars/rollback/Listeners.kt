@@ -46,6 +46,7 @@ private fun add(pos: Int, event: Event) {
 private var tickStartTime: Long = Time.millis()
 
 fun addListeners() {
+    Log.info("Adding the sus")
     arc.Events.run(Trigger.update) {
         tickStartTime = Time.millis()
 //        allEvents.each { globalMatcher.match()}
@@ -144,6 +145,10 @@ fun addListeners() {
     }
 
     onEvent<BlockDestroyEvent> {
+        if (it.tile.build == null) {
+            Log.err("Entity of BlockDestroyEvent should not be null!")
+            return@onEvent
+        }
         add(it.tile.pos(), DestroyE(it.tile, it.tile.build))
     }
 
