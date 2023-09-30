@@ -50,9 +50,9 @@ fun addListeners() {
     arc.Events.run(Trigger.update) {
         tickStartTime = Time.millis()
 //        allEvents.each { globalMatcher.match()}
-         for (event: Event in allEvents) {
+        for (event: Event in allEvents) {
 //             Log.info("\nNew match started for $event")
-             globalMatcher.match(event, eventStore.get(event.tile.pos()))
+            globalMatcher.match(event, eventStore.get(event.tile.pos()))
         }
         eventStore.clear()
         allEvents.clear()
@@ -85,7 +85,7 @@ fun addListeners() {
 
     onEvent<TileChangeEvent> {
         val prev: TilePreChange = tilePreSets.get(it.tile.pos())!!
-        val prevBuild: Building? = prev.build?.takeIf { b -> b.pos() ==  it.tile.pos()}
+        val prevBuild: Building? = prev.build?.takeIf { b -> b.pos() == it.tile.pos() }
         val curBuild: Building? = it.tile.build?.takeIf { b -> b.pos() == it.tile.pos() }
 
         if (prevBuild != null && prevBuild !is ConstructBuild && (curBuild == null || curBuild is ConstructBuild)) {
@@ -151,8 +151,6 @@ fun addListeners() {
         }
         add(it.tile.pos(), DestroyE(it.tile, it.tile.build))
     }
-
-
 }
 
 

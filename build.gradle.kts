@@ -36,12 +36,12 @@ dependencies {
 mindustry {
     projectType = ProjectType.Plugin
     dependency {
-        mindustry on "v145.1"
-        arc on "v145.1"
+        mindustry on "v146"
+        arc on "v146"
     }
     meta.version = if (hasProperty("modVer")) property("modVer") as String else "build-${LocalTime.now()}"
     server {
-        mindustry official "v145.1"
+        mindustry official "v146"
     }
     deploy {
         baseName = project.name
@@ -59,6 +59,14 @@ publishing {
             version = "1.2"/*property("modVer") as String*/
 
             from(components["java"])
+        }
+    }
+}
+
+configurations.all{
+    resolutionStrategy.eachDependency {
+        if(this.requested.group == "com.github.Anuken.Arc"){
+            this.useVersion("v146")
         }
     }
 }
