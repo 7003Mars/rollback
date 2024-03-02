@@ -12,11 +12,11 @@ import mindustry.gen.Player
 import mindustry.gen.Unit
 
 inline fun <reified T> Seq<in T>.only(): Seq<T> {
-    return this.filter {it is T}.`as`()
+    return this.retainAll {it is T}.`as`()
 }
 
 fun Seq<Action>.before(me: Action): Seq<Action> {
-    return this.filter {it.id < me.id}
+    return this.retainAll {it.id < me.id}
 }
 
 fun <T> Seq<T>.lastOpt(): T? {

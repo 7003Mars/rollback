@@ -144,7 +144,7 @@ class TileStore(var width: Int, var height: Int) {
                 val actions: Seq<Action> = this.collectLatest { it.time > time && it.uuid == uuid }.sort()
 //                Log.info("Collected: \n@", actions);
                 actions.each(Action::preUndo)
-                actions.filter(Action::willRollback)
+                actions.retainAll(Action::willRollback)
 //                Log.info("filtered:\n@", actions)
                 // Rollback cores first to prevent game over
                 val coreUndo = actions.popAll { it is DeleteAction && it.undoToCore() }.`as`<DeleteAction>()

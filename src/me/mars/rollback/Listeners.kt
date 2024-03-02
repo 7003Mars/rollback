@@ -293,11 +293,14 @@ class ModifiedExecutor : LExecutor() {
         if (index >= this.instructions.size || index < 0) index = 0
         val instr: LInstruction = this.instructions[index]
         if (instr is ControlI && instr.type == LAccess.config) {
-            val build: Building = this.obj(instr.target).takeIf { it is Building } as Building? ?: return
-            if (!(this.privileged || (build.team == this.team && this.linkIds.contains(build.id)))) return
-            if (!this.`var`(instr.p1).isobj) return
-            val value: Any? = this.obj(instr.p1)
-            tileStore.setAction(ConfigAction("", build.pos(), build.block.size, this.team, value))
+            kotlin.run {
+                val build: Building = this.obj(instr.target).takeIf { it is Building } as Building? ?: return@run
+                if (!(this.privileged || (build.team == this.team && this.linkIds.contains(build.id)))) return@run
+                if (!this.`var`(instr.p1).isobj) return@run
+                val value: Any? = this.obj(instr.p1)
+                tileStore.setAction(ConfigAction("", build.pos(), build.block.size, this.team, value))
+            }
+
         }
         super.runOnce()
     }

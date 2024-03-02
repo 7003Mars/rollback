@@ -40,7 +40,7 @@ class TileInfo {
      * Clears all actions with an id >= [id]
      */
     fun clear(id: Int) {
-       this.actions.filter { it.id < id }
+       this.actions.retainAll { it.id < id }
         this.prevBuild = this.prevBuild.takeIf { it != null && it.id < id }
         this.prevDelete = this.prevDelete.takeIf { it != null && it.id < id }
         this.prevConfig = this.prevConfig.takeIf { it != null && it.id < id }
@@ -58,7 +58,7 @@ class TileInfo {
     @Suppress("UNCHECKED_CAST")
     fun <T : Action> select(index: Int, cls: Class<T>, check: Boolf<in Action>): T? {
         val seq: Seq<Action> = this.all()
-        seq.filter { check.get(it) && it.javaClass == cls }
+        seq.retainAll { check.get(it) && it.javaClass == cls }
         if (seq.isEmpty) return null
         if (seq.size == 1) return seq.first() as T
         val i: Int = if (index < 0) seq.size + index+1 else index+1

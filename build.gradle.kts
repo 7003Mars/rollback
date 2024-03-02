@@ -15,24 +15,37 @@ sourceSets {
         java.srcDir("test")
     }
 }
+
 group= "me.mars"
 version= "1.0"
+
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
     withJavadocJar()
     withSourcesJar()
 }
+
 artifacts {
     archives(tasks.getByName("sourcesJar"))
 }
+
 repositories {
     mavenCentral()
+    maven("https://maven.xpdustry.com/anuken")
     mindustryRepo()
 }
 dependencies {
     importMindustry()
 }
+configurations.all{
+    resolutionStrategy.eachDependency {
+        if(this.requested.group == "com.github.Anuken.Arc"){
+            this.useVersion("v146")
+        }
+    }
+}
+
 mindustry {
     projectType = ProjectType.Plugin
     dependency {
